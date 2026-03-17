@@ -86,17 +86,17 @@ SJF4J's OBNT relies on reflection for flexible access to POJO/JOJO/JAJO. Source:
 Benchmark                                            Mode  Cnt   Score   Error  Units
 ReflectionBenchmark.reflection_ctor_native           avgt   24   6.532 ± 0.512  ns/op baseline
 ReflectionBenchmark.reflection_ctor_reflect          avgt   24  10.107 ± 0.059  ns/op
-ReflectionBenchmark.reflection_ctor_methodHandle    avgt   24   9.156 ± 0.664  ns/op
+ReflectionBenchmark.reflection_ctor_methodHandle     avgt   24   9.156 ± 0.664  ns/op
 ReflectionBenchmark.reflection_ctor_lambda           avgt   24   6.067 ± 0.064  ns/op !0.93 faster?
 
 ReflectionBenchmark.reflection_getter_native         avgt   24   0.648 ± 0.018  ns/op baseline
 ReflectionBenchmark.reflection_getter_reflect        avgt   24   4.184 ± 0.027  ns/op
-ReflectionBenchmark.reflection_getter_methodHandle  avgt   24   3.104 ± 0.034  ns/op
+ReflectionBenchmark.reflection_getter_methodHandle   avgt   24   3.104 ± 0.034  ns/op
 ReflectionBenchmark.reflection_getter_lambda         avgt   24   0.796 ± 0.024  ns/op !1.23 slower
 
 ReflectionBenchmark.reflection_setter_native         avgt   24   0.764 ± 0.023  ns/op baseline
 ReflectionBenchmark.reflection_setter_reflect        avgt   24   4.376 ± 0.041  ns/op
-ReflectionBenchmark.reflection_setter_methodHandle  avgt   24   3.040 ± 0.006  ns/op
+ReflectionBenchmark.reflection_setter_methodHandle   avgt   24   3.040 ± 0.006  ns/op
 ReflectionBenchmark.reflection_setter_lambda         avgt   24   0.996 ± 0.007  ns/op !1.30 slower
 ```
 

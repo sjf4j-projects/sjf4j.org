@@ -1,4 +1,4 @@
-name: Sync Getting Started
+name: Sync Docs From sjf4j
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  sync-readme:
+  sync-docs:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,19 +19,20 @@ jobs:
           ref: online
           fetch-depth: 0
 
-      - name: Fetch README from sjf4j
+      - name: Fetch README and CHANGELOG from sjf4j
         run: |
           curl -fsSL "https://raw.githubusercontent.com/sjf4j-projects/sjf4j/main/README.md" -o docs/getting_started.md
+          curl -fsSL "https://raw.githubusercontent.com/sjf4j-projects/sjf4j/main/CHANGELOG.md" -o docs/changelog.md
 
       - name: Commit changes if needed
         run: |
-          if git diff --quiet -- docs/getting_started.md; then
-            echo "No changes in upstream README."
+          if git diff --quiet -- docs/getting_started.md docs/changelog.md; then
+            echo "No changes in upstream README/CHANGELOG."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/getting_started.md
-          git commit -m "docs: sync getting_started from sjf4j README"
+          git add docs/getting_started.md docs/changelog.md
+          git commit -m "docs: sync getting_started and changelog from sjf4j"
           git push origin HEAD:online

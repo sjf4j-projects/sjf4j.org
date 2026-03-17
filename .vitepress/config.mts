@@ -109,6 +109,7 @@ export default withMermaid(defineConfig({
         items: [
           { text: 'Getting Started', link: '/docs/getting_started' },
           { text: 'Benchmarks', link: '/docs/benchmarks' },
+          { text: 'Changelog', link: '/docs/changelog' },
         ],
       },
       {

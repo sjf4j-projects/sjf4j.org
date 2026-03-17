@@ -96,7 +96,10 @@ The default schema base path is
 ```
 classpath:///json-schemas/
 ```
-It can be configured if necessary.
+It can be configured if necessary:
+```java
+SchemaValidator validator = new SchemaValidator("file:///tmp/json-schemas/");
+```
 
 
 

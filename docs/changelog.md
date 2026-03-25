@@ -10,9 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added `JsonPath.compileCached(String)` to provide an explicit cached compile path.
 - Added `PathCache` interface with built-in `ConcurrentHashMap` as default implementation.
+- Added `NamingStrategy` and `@NodeNaming` to map JSON property names like `snake_case` to Java fields without per-field annotations.
+- Added `JsonArray.of(...)` and `JsonObject.of(...)` for simpler literal-style container creation.
 
 ### Changed
 - Changed `SchemaValidator` to validate `@ValidJsonSchema` along class inheritance chains (parent and child annotations both applied).
+
+### Fixed
+- Fixed inherited POJO field resolution when parent and child define the same key, ensuring child field metadata is preserved and parent metadata does not overwrite it.
 
 ## [1.1.5] - 2026.03.11
 ### Added

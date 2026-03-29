@@ -1,3 +1,8 @@
+---
+title: "Getting Started with SJF4J Java JSON Library"
+description: "Install SJF4J with Maven or Gradle and learn the Java JSON workflow for modeling, parsing, navigation, patching, and validation."
+---
+
 # SJF4J — Simple JSON Facade for Java
 
 ![License](https://img.shields.io/github/license/sjf4j-projects/sjf4j)
@@ -230,4 +235,3 @@ SJF4J began as an exploration of what JSON-Oriented Development might look like 
 
 If you find the project interesting,
 contributions of all kinds — code, docs, bug reports, discussions, examples, or benchmarks — are welcome~!
-

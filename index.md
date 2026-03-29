@@ -1,10 +1,12 @@
 ---
 layout: home
+title: "Java JSON Library for JSON Path, JSON Patch, and JSON Schema"
+description: "SJF4J is a Java JSON library that unifies JSON Path, JSON Patch, JSON Schema, YAML, and object mapping behind one semantic API."
 
 hero:
   name: SJF4J
-  text: Simple JSON Facade for Java
-  tagline: A unified JSON-semantic structural processing layer
+  text: Java JSON Library and Semantic Facade
+  tagline: One semantic API for JSON Path, JSON Patch, JSON Schema, YAML, and Java object mapping.
   actions:
     - theme: brand
       text: Getting Started
@@ -21,43 +23,43 @@ SJF4J requires `JDK 8` and has no external dependencies.
 
 <MavenInstallSnippet />
 
-## Modules
+## Java JSON Features
 
 <div class="feature-grid">
   <div class="feature-card">
     <h3>🌳 Modeling (OBNT)</h3>
     <p>Defines a unified object model where typed Java fields and dynamic JSON structure coexist.</p>
-    <a href="/docs/modeling">Learn more</a>
+    <a href="/docs/modeling">Java JSON object model docs</a>
   </div>
   <div class="feature-card">
-    <h3>📦 Parsing (Codec)</h3>
+    <h3>📦 Parsing (JSON / YAML)</h3>
     <p>Provides a unified facade for decoding and encoding structured data across multiple formats.</p>
-    <a href="/docs/parsing">Learn more</a>
+    <a href="/docs/parsing">JSON and YAML parsing docs</a>
   </div>
   <div class="feature-card">
     <h3>🔭 Navigation (JSON Path)</h3>
     <p>Enables declarative querying and precise structural navigation over the object model.</p>
-    <a href="/docs/navigation">Learn more</a>
+    <a href="/docs/navigation">JSON Path docs</a>
   </div>
   <div class="feature-card">
     <h3>🔧 Transformation (JSON Patch)</h3>
     <p>Applies standard-compliant structural mutations through JSON Patch operations.</p>
-    <a href="/docs/transformation">Learn more</a>
+    <a href="/docs/transformation">JSON Patch docs</a>
   </div>
   <div class="feature-card">
     <h3>✅ Validation (JSON Schema)</h3>
     <p>Enforces structural and semantic constraints using modern JSON Schema specifications.</p>
-    <a href="/docs/validation">Learn more</a>
+    <a href="/docs/validation">JSON Schema validation docs</a>
   </div>
   <div class="feature-card">
     <h3>⚡ Benchmarks</h3>
     <p>Delivers high performance with minimal overhead while providing a unified JSON-semantic processing model.</p>
-    <a href="/docs/benchmarks">Learn more</a>
+    <a href="/docs/benchmarks">Java JSON benchmark results</a>
   </div>
 </div>
 
 <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:1.5rem;">
-  <a href="/docs/modeling" class="vp-link" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.55rem 1.25rem;border-radius:8px;font-size:0.9rem;font-weight:600;background:var(--vp-c-brand-1);color:var(--vp-c-white);">Read the Docs -&gt;</a>
+  <a href="/docs/getting_started" class="vp-link" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.55rem 1.25rem;border-radius:8px;font-size:0.9rem;font-weight:600;background:var(--vp-c-brand-1);color:var(--vp-c-white);">Explore Java JSON docs -&gt;</a>
 </div>
 
 <style>

@@ -1,3 +1,8 @@
+---
+title: "SJF4J FAQ for Java JSON Development"
+description: "Find answers about SJF4J, supported JSON parsers, YAML support, performance overhead, JOJO, Java requirements, and contributions."
+---
+
 # FAQ
 
 ## What is SJF4J?
@@ -10,7 +15,7 @@ SJF4J requires only **JDK 8** and has no external dependencies.
 
 ## Which JSON parsers are supported?
 
-SJF4J supports **Jackson**, **Gson**, and **Fastjson2**. The first available parser on the classpath (in that order) will be automatically used. If none are detected, SJF4J falls back to its own simple built-in parser.
+SJF4J supports **Jackson**, **Gson**, **Fastjson2**, and **JSON-P**. The first available parser on the classpath will be automatically used according to SJF4J's runtime selection rules. If none are detected, SJF4J falls back to its own simple built-in parser.
 
 ## Does SJF4J support formats other than JSON?
 

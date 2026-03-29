@@ -1,3 +1,8 @@
+---
+title: "Parsing JSON, YAML, and Properties in Java"
+description: "Parse and serialize JSON, YAML, Java Properties, POJO, JOJO, and raw node trees through one Java codec API."
+---
+
 # Parsing (Codec)
 
 `Sjf4j` provides a unified set of entry-point APIs,
@@ -222,4 +227,3 @@ SJF4J adds structural semantics on top of underlying codecs, so parsing cost dep
 - `JOJO` usually keeps a better performance profile than plain `POJO` while preserving typed models.
 
 See [Benchmarks](./benchmarks#json-parsing-benchmark) for parsing results and backend-specific notes.
-

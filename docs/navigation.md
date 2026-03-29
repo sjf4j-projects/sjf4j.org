@@ -1,3 +1,8 @@
+---
+title: "Java JSON Path and JSON Pointer"
+description: "Query and mutate Java object graphs with RFC 9535 JSON Path and RFC 6901 JSON Pointer on SJF4J's unified node model."
+---
+
 # Navigation (JSON Path)
 SJF4J supports two standardized path syntaxes:
 - [JSON Path (RFC 9535)](https://www.rfc-editor.org/rfc/rfc9535)
@@ -264,4 +269,3 @@ SJF4J JsonPath is designed for direct traversal over native Java object graphs w
 - `JOJO` is the best fit when you want typed models with a more JSON-native performance profile.
 
 See [Benchmarks](./benchmarks#json-path-benchmark) for the latest results and methodology.
-

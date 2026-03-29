@@ -1,3 +1,8 @@
+---
+title: "Java JSON Schema Validation"
+description: "Validate Java JSON nodes with JSON Schema Draft 2020-12 using SJF4J's OBNT model without extra serialization steps."
+---
+
 # Validation (JSON Schema)
 
 SJF4J offers full support for [JSON Schema Draft 2020-12](https://json-schema.org/) ,
@@ -164,4 +169,3 @@ This performance is primarily due to its direct validation over native object gr
 - Re-serialization
 - Re-parsing
 - Intermediate tree construction
-

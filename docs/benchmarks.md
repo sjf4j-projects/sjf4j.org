@@ -1,3 +1,8 @@
+---
+title: "Java JSON Library Benchmarks"
+description: "Review JMH benchmarks comparing SJF4J with Jackson, Gson, Fastjson2, and Jayway JsonPath for parsing and query performance."
+---
+
 # Benchmarks
 
 All benchmarks are reproducible and implemented using **JMH (Java Microbenchmark Harness)**.
@@ -199,4 +204,3 @@ Ran result:
 **Summary**:  
 - In Bowtie’s draft 2020-12 benchmark, SJF4J delivers **high performance** 
   and consistently ranks among the top-tier of Java implementations.
-

@@ -1,3 +1,8 @@
+---
+title: "Java JSON Patch and Merge Patch"
+description: "Apply RFC 6902 JSON Patch and RFC 7386 Merge Patch to Java JSON objects, arrays, and POJO or JOJO nodes."
+---
+
 # Transformation (JSON Patch)
 
 SJF4J supports two standardized patch formats:
@@ -163,7 +168,6 @@ Because OBNT operates on plain Java objects:
 
 `JsonPatch` in SJF4J is not a wrapper around JSON text —
 it is a structural transformation mechanism for OBNT.
-
 
 
 

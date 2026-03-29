@@ -1,3 +1,8 @@
+---
+title: "Modeling and Java JSON Object Mapping (OBNT)"
+description: "Learn SJF4J's Object Based Node Tree for Java JSON object mapping across POJO, JOJO, JAJO, Map, List, and raw values."
+---
+
 # Modeling (OBNT)
 
 SJF4J represents structured data as an **Object Based Node Tree (OBNT)**.
@@ -315,7 +320,6 @@ public class JsonPatch extends JsonArray {
     // ...
 }
 ```
-
 
 
 

@@ -135,17 +135,6 @@ Typical separation of responsibilities:
 Together, they may form a layered validation model **spanning domain invariants and runtime data contracts.**
 
 
-## Performance
-In local Bowtie draft 2020-12 benchmarks, 
-SJF4J consistently ranks among the top-performing Java implementations. 
-(See [Benchmarks](https://sjf4j.org/docs/benchmarks#json-schema-validation-benchmark))
-
-This performance is primarily due to its direct validation over native object graphs, avoiding:
-- Re-serialization
-- Re-parsing
-- Intermediate tree construction
-
-
 ## Why Validation in OBNT
 
 Most JSON tooling assumes:
@@ -164,4 +153,15 @@ Since validation operates directly on OBNT:
 
 Validation is therefore a structural capability of OBNT,
 not a separate JSON-processing pipeline.
+
+
+## Performance
+In local Bowtie draft 2020-12 benchmarks,
+SJF4J consistently ranks among the top-performing Java implementations.
+(See [Benchmarks](https://sjf4j.org/docs/benchmarks#json-schema-validation-benchmark))
+
+This performance is primarily due to its direct validation over native object graphs, avoiding:
+- Re-serialization
+- Re-parsing
+- Intermediate tree construction
 

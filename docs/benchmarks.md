@@ -2,6 +2,33 @@
 
 All benchmarks are reproducible and implemented using **JMH (Java Microbenchmark Harness)**.
 
+## Reflection Benchmark
+
+SJF4J's OBNT relies on reflection for flexible access to POJO/JOJO/JAJO. Source: [ReflectionBenchmark.java](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/jmh/java/org/sjf4j/ReflectionBenchmark.java).
+
+```text
+Benchmark                                            Mode  Cnt   Score   Error  Units
+ReflectionBenchmark.reflection_ctor_native           avgt   24   6.532 ± 0.512  ns/op baseline
+ReflectionBenchmark.reflection_ctor_reflect          avgt   24  10.107 ± 0.059  ns/op
+ReflectionBenchmark.reflection_ctor_methodHandle     avgt   24   9.156 ± 0.664  ns/op
+ReflectionBenchmark.reflection_ctor_lambda           avgt   24   6.067 ± 0.064  ns/op !0.93 faster?
+
+ReflectionBenchmark.reflection_getter_native         avgt   24   0.648 ± 0.018  ns/op baseline
+ReflectionBenchmark.reflection_getter_reflect        avgt   24   4.184 ± 0.027  ns/op
+ReflectionBenchmark.reflection_getter_methodHandle   avgt   24   3.104 ± 0.034  ns/op
+ReflectionBenchmark.reflection_getter_lambda         avgt   24   0.796 ± 0.024  ns/op !1.23 slower
+
+ReflectionBenchmark.reflection_setter_native         avgt   24   0.764 ± 0.023  ns/op baseline
+ReflectionBenchmark.reflection_setter_reflect        avgt   24   4.376 ± 0.041  ns/op
+ReflectionBenchmark.reflection_setter_methodHandle   avgt   24   3.040 ± 0.006  ns/op
+ReflectionBenchmark.reflection_setter_lambda         avgt   24   0.996 ± 0.007  ns/op !1.30 slower
+```
+
+**Summary**:
+- SJF4J uses **lambda-based** accessors to minimize reflection overhead,
+  enabling dynamic object manipulation with **near-native performance**.
+
+
 ## JSON Parsing Benchmark
 This benchmark measures the additional structural overhead introduced by SJF4J on top of native JSON libraries.
 
@@ -78,32 +105,51 @@ Read.json_simple_facade_pojo              SHARED_IO  avgt   20   7.635 ± 0.071 
 
 > Note: Regardless of the underlying JSON parser, SJF4J ensures consistent behavior at the API level.
 
-## Reflection Benchmark
+## JSON Path Benchmark
 
-SJF4J's OBNT relies on reflection for flexible access to POJO/JOJO/JAJO. Source: [ReflectionBenchmark.java](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/jmh/java/org/sjf4j/ReflectionBenchmark.java).
+This benchmark compares `SJF4J` with `Jayway JsonPath` using JMH.  
+To keep the comparison fair, the main results focus on `compile` and `query` over the same in-memory model, rather than `parse + query` with different parser stacks.
+
+Source: [JsonPathCompareBenchmark.java](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/jmh/java/org/sjf4j/JsonPathCompareBenchmark.java)
+
+**SJF4J vs Jayway**
+
+Geometric mean, lower is better:
+
+| Benchmark group | SJF4J | Jayway | Result |
+|---|---:|---:|---:|
+| `compile` | `97.384 ns/op` | `124.862 ns/op` | SJF4J `1.28x` faster |
+| `query_definite` | `99.618 ns/op` | `236.808 ns/op` | SJF4J `2.38x` faster |
+| `query_indefinite` | `656.191 ns/op` | `1293.942 ns/op` | SJF4J `1.97x` faster |
+| `query_map_list_definite` | `31.297 ns/op` | `199.548 ns/op` | SJF4J `6.38x` faster |
+| `query_map_list_indefinite` | `279.825 ns/op` | `1300.625 ns/op` | SJF4J `4.65x` faster |
+
+Representative query results:
 
 ```text
-Benchmark                                            Mode  Cnt   Score   Error  Units
-ReflectionBenchmark.reflection_ctor_native           avgt   24   6.532 ± 0.512  ns/op baseline
-ReflectionBenchmark.reflection_ctor_reflect          avgt   24  10.107 ± 0.059  ns/op
-ReflectionBenchmark.reflection_ctor_methodHandle     avgt   24   9.156 ± 0.664  ns/op
-ReflectionBenchmark.reflection_ctor_lambda           avgt   24   6.067 ± 0.064  ns/op !0.93 faster?
+$.store.book[1].price
+- shared Jackson JsonNode: SJF4J 110.673 ns/op, Jayway 260.086 ns/op
+- Map/List object graph:   SJF4J  37.384 ns/op, Jayway 280.279 ns/op
 
-ReflectionBenchmark.reflection_getter_native         avgt   24   0.648 ± 0.018  ns/op baseline
-ReflectionBenchmark.reflection_getter_reflect        avgt   24   4.184 ± 0.027  ns/op
-ReflectionBenchmark.reflection_getter_methodHandle   avgt   24   3.104 ± 0.034  ns/op
-ReflectionBenchmark.reflection_getter_lambda         avgt   24   0.796 ± 0.024  ns/op !1.23 slower
-
-ReflectionBenchmark.reflection_setter_native         avgt   24   0.764 ± 0.023  ns/op baseline
-ReflectionBenchmark.reflection_setter_reflect        avgt   24   4.376 ± 0.041  ns/op
-ReflectionBenchmark.reflection_setter_methodHandle   avgt   24   3.040 ± 0.006  ns/op
-ReflectionBenchmark.reflection_setter_lambda         avgt   24   0.996 ± 0.007  ns/op !1.30 slower
+$..price
+- shared Jackson JsonNode: SJF4J 1736.489 ns/op, Jayway 3877.442 ns/op
+- Map/List object graph:   SJF4J  543.237 ns/op, Jayway 2495.255 ns/op
 ```
 
-**Summary**:  
-- SJF4J uses **lambda-based** accessors to minimize reflection overhead,
-    enabling dynamic object manipulation with **near-native performance**.
+**SJF4J Object Model Comparison**
 
+SJF4J can run JSONPath directly over multiple Java object models.  
+For native Java object graphs, `Map/List` is fastest, while `JOJO` offers a notably better performance profile than plain `POJO`.
+
+| Benchmark group | Map/List | JOJO | POJO |
+|---|---:|---:|---:|
+| `definite` | `31.149 ns/op` | `42.849 ns/op` | `94.216 ns/op` |
+| `indefinite` | `270.137 ns/op` | `372.569 ns/op` | `553.901 ns/op` |
+
+**Summary**:
+
+- Against Jayway, SJF4J is faster in `compile` and `query`.
+- Within SJF4J, `Map/List` gives the best raw speed, while `JOJO` stays much closer to `Map/List` than plain `POJO` does.
 
 ## JSON Schema Validation Benchmark
 
@@ -153,5 +199,4 @@ Ran result:
 **Summary**:  
 - In Bowtie’s draft 2020-12 benchmark, SJF4J delivers **high performance** 
   and consistently ranks among the top-tier of Java implementations.
-
 

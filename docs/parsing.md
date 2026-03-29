@@ -212,3 +212,14 @@ Poly p2 = Sjf4j.fromJson("[1,2,3]", Poly.class);     // PolyArr
 - `when`: accepted discriminator values for one mapping; runtime discriminator values are matched after string conversion
 - `scope`: where to resolve discriminator (`SELF` or `PARENT`)
 - `onNoMatch`: behavior when no mapping matches (`FAIL` by default, or `FAILBACK_NULL`)
+
+## Performance
+
+SJF4J adds structural semantics on top of underlying codecs, so parsing cost depends on both the backend and the target model.
+
+- In most cases, SJF4J is near native performance in the benchmark suite.
+- `PLUGIN_MODULE` is typically the best default when the backend supports it.
+- `JOJO` usually keeps a better performance profile than plain `POJO` while preserving typed models.
+
+See [Benchmarks](./benchmarks#json-parsing-benchmark) for parsing results and backend-specific notes.
+

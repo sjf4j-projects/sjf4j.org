@@ -257,9 +257,9 @@ not an external query layer.
 
 ## Performance
 
-SJF4J JSONPath is designed for direct traversal over native Java object graphs with low structural overhead.
+SJF4J JsonPath is designed for direct traversal over native Java object graphs with low structural overhead.
 
-- Against Jayway, SJF4J is faster in our JMH compile and query.
+- SJF4J delivers fast performance in JMH benchmarks.
 - Inside SJF4J, `Map/List` is fastest, `JOJO` is close behind, and plain `POJO` is slower.
 - `JOJO` is the best fit when you want typed models with a more JSON-native performance profile.
 

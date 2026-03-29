@@ -30,23 +30,39 @@ const WEBSITE_SCHEMA = {
 const FAQ_ENTRIES = [
   {
     question: 'What is SJF4J?',
-    answer: 'SJF4J is a Java JSON facade that unifies parsing, modeling, navigation, transformation, and validation across multiple JSON libraries.',
+    answer: 'SJF4J is a Java JSON facade that unifies parsing, modeling, querying, transformation, and validation behind one JSON-semantic API. It sits on top of existing backends and gives you one structural model for working with structured data.',
+  },
+  {
+    question: 'How is SJF4J different from Jackson or Gson?',
+    answer: 'Jackson and Gson are primarily JSON libraries with their own parsing, binding, and tree APIs. SJF4J is a facade and structural processing layer that can sit on top of those libraries and keep parsing, binding, path, patch, and schema workflows on one semantic model.',
+  },
+  {
+    question: 'Which JSON parsers and data formats does SJF4J support?',
+    answer: 'SJF4J supports Jackson, Gson, Fastjson2, JSON-P, and a built-in minimal fallback parser. It works with JSON, YAML, Java Properties, and direct in-memory Java object graphs.',
+  },
+  {
+    question: 'What is OBNT, and why does it matter?',
+    answer: 'OBNT means Object Based Node Tree. Instead of forcing data into a separate AST, SJF4J treats ordinary Java objects as nodes in one unified tree so the same semantic APIs can work across Map, List, POJO, JOJO, JsonObject, and raw values.',
+  },
+  {
+    question: 'What is JOJO, and when should I use it instead of a POJO?',
+    answer: 'JOJO means JSON Object Java Object. It is a typed Java object that also behaves like a JSON object, so you can keep normal Java fields while preserving undeclared JSON properties and using SJF4J\'s JSON-semantic APIs.',
+  },
+  {
+    question: 'Can SJF4J work directly on existing Java object graphs without serializing to JSON first?',
+    answer: 'Yes. SJF4J can operate directly on in-memory Java object graphs through OBNT, so you can navigate, transform, and validate runtime objects without first converting them into an intermediate JSON tree.',
+  },
+  {
+    question: 'Does SJF4J support JSON Path, JSON Pointer, JSON Patch, and JSON Schema?',
+    answer: 'Yes. SJF4J supports RFC 9535 JSON Path, RFC 6901 JSON Pointer, RFC 6902 JSON Patch, RFC 7386 JSON Merge Patch, and JSON Schema Draft 2020-12 as first-class parts of the same semantic model.',
+  },
+  {
+    question: 'How fast is SJF4J, and what is the overhead?',
+    answer: 'SJF4J aims for minimal overhead rather than universal benchmark wins. The project docs describe overhead as modest and show near-parity results in some benchmark modes, but performance still depends on backend, data model, and workload.',
   },
   {
     question: 'What Java version is required?',
-    answer: 'SJF4J requires JDK 8 and has no external dependencies.',
-  },
-  {
-    question: 'Which JSON parsers are supported?',
-    answer: 'SJF4J supports Jackson, Gson, Fastjson2, JSON-P, and a built-in fallback parser when no external parser is present.',
-  },
-  {
-    question: 'Does SJF4J support formats other than JSON?',
-    answer: 'Yes. SJF4J also supports YAML, Java Properties, and direct in-memory object graph processing through OBNT.',
-  },
-  {
-    question: 'What is the performance overhead?',
-    answer: 'SJF4J typically adds modest overhead while providing a unified semantic API. The benchmarks page includes detailed JMH results.',
+    answer: 'SJF4J requires JDK 8 and has no external dependencies in the core artifact.',
   },
 ]
 
@@ -263,6 +279,7 @@ export default withMermaid(defineConfig({
           { text: 'Getting Started', link: '/docs/getting_started' },
           { text: 'Benchmarks', link: '/docs/benchmarks' },
           { text: 'Changelog', link: '/docs/changelog' },
+          { text: 'FAQ', link: '/docs/faq' },
         ],
       },
       {

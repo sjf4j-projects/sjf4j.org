@@ -1,8 +1,3 @@
----
-title: "SJF4J Changelog and Release Notes"
-description: "Track SJF4J releases, fixes, performance improvements, and new Java JSON features across modeling, parsing, path, patch, and schema modules."
----
-
 # Changelog
 
 All notable changes to **SJF4J (Simple JSON Facade for Java)** will be documented in this file.

@@ -76,7 +76,7 @@ SJF4J allows custom Java types to participate in OBNT.
 - For JSON Array → use `JAJO`
 - For JSON Value → use `NodeValue`
 
-### Using `NodeValue`
+### Using `@NodeValue`
 **Annotate with `@NodeValue`**
 ```java
 @NodeValue    
@@ -217,6 +217,43 @@ Poly p2 = Sjf4j.fromJson("[1,2,3]", Poly.class);     // PolyArr
 - `when`: accepted discriminator values for one mapping; runtime discriminator values are matched after string conversion
 - `scope`: where to resolve discriminator (`SELF` or `PARENT`)
 - `onNoMatch`: behavior when no mapping matches (`FAIL` by default, or `FAILBACK_NULL`)
+
+### Using `@NodeNaming`
+
+`@NodeNaming` defines the JSON-facing naming strategy for a` POJO` or `JOJO`.
+It is applied when SJF4J derives property names from Java member names.
+
+```java
+@NodeNaming(NamingStrategy.SNAKE_CASE)
+public class User extends JsonObject {
+    private String userName;
+    private int loginCount;
+}
+
+User user = Sjf4j.fromJson(
+        """
+        {"user_name":"han","login_count":2}
+        """,
+        User.class
+);
+
+assertEquals("han", user.userName);
+assertEquals(2, user.loginCount);
+assertEquals("han", user.getString("user_name"));
+assertNull(user.getString("userName"));
+```
+
+Built-in strategies:
+- `NamingStrategy.SNAKE_CASE`
+
+**Precedence (high → low)**:
+- `@NodeProperty` on field or constructor parameter
+- `@NodeNaming` on the type
+- global `Sjf4jConfig.Builder.namingStrategy(...)`
+
+Notes:
+- Overrides the global naming strategy for the annotated type
+- Applies to both read and write
 
 ## Performance
 

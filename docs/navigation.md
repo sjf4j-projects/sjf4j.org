@@ -30,6 +30,8 @@ List<Integer> scores1 = path.find(node, Integer.class);
 List<Integer> scores2 = path.find(jo, Integer.class);
 ```
 
+### Use `JsonObject` / `JsonArray`
+
 `JsonObject` and `JsonArray` provide convenient shortcut methods for using `JsonPath`.  
 These methods follow the naming pattern `*ByPath()`.
 
@@ -126,6 +128,22 @@ Result:
 ```
 If a segment exists but is null, it is treated as non-navigable and replaced with a container.
 
+
+### Cache the JsonPaths
+
+SJF4J provides a built-in global path cache designed for workloads that compile dynamic JSON-Path expressions.
+
+By default, the cache is backed by a `ConcurrentHashMap`.  
+For advanced scenarios, the cache strategy can be customized via `Sjf4jConfig.Builder.pathCache(...)`.
+
+```java
+JsonPath p1 = JsonPath.compileCached("$.a.b[0].c");
+JsonPath p2 = JsonPath.compileCached("$.a.b[0].c");
+
+assertSame(p1, p2);
+```
+This avoids repeated compilation of identical expressions 
+and helps maintain consistent performance in dynamic query workloads.
 
 ## JSON Path Syntax
 SJF4J fully supports the [JSON Path (RFC 9535)](https://www.rfc-editor.org/rfc/rfc9535) specification,

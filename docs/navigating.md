@@ -100,6 +100,7 @@ List<Integer> firstTwo = jo.findByPath("$.scores[0:2]", Integer.class);
   - Existing → overwritten
 - Array:
   - Index in `[0, size]` → inserted 
+  - `[+]` in JSON Path or `/-` in JSON Pointer → append to array tail
   - Index > size → ERROR
 
 `replace(path, value)`
@@ -144,9 +145,12 @@ including `filters`, `functions`, `descent`, `unions`, `slicing`, `function call
 | `[start:end]` | Array slice                | `$.*.book[1:3]`            |
 | `[a,b]`       | Union                      | `$.book[0,-1]`             |
 | `[?()]`       | Filter                     | `$..book[?(@.price < 10)]` |
-| `func()`      | Function call              | `$..book.size()`           |
+| `.func()`     | Function call              | `$..book.size()`           |
+| `[+]`         | Append (SJF4J extension)   | `$.book[+]`                |
 
 > Note: When a function appears at the end of a path, the function result is returned instead of a node list.
+
+> Note: `[+]` is an SJF4J extension, not part of RFC 9535. It means append and is only valid in mutation contexts such as `add()` or `ensurePut()`.
 
 **Filter Expressions**
 
@@ -201,6 +205,7 @@ String result = jo.evalByPath("$.hi()", String.class);
 
 - Must start with `/`
 - Direct navigation only, no `filters`, `wildcards`, or `functions`
+- `/-` means append and is only valid in mutation contexts such as `add()` or `ensurePut()`
 - Escape rules:
   - `~` → `~0`
   - `/` → `~1`

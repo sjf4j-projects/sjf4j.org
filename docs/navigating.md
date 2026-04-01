@@ -94,7 +94,7 @@ List<Integer> firstTwo = jo.findByPath("$.scores[0:2]", Integer.class);
 
 ### Mutation APIs
 
-`add(path, value)`  
+**`add(path, value)`**  
 - Object member:
   - Missing → inserted
   - Existing → overwritten
@@ -103,18 +103,60 @@ List<Integer> firstTwo = jo.findByPath("$.scores[0:2]", Integer.class);
   - `[+]` in JSON Path or `/-` in JSON Pointer → append to array tail
   - Index > size → ERROR
 
-`replace(path, value)`
+**`replace(path, value)`**
 - Target must exist
 - Otherwise → ERROR
 
-`remove(path)`
+**`remove(path)`**
 - Cannot remove fields in `POJO`
 - Cannot remove elements in native `Array` or `Set`
 
+```java
+JsonObject jo = JsonObject.fromJson("""
+{
+  "name": "Bob",
+  "scores": [90, 95],
+  "active": true
+}
+""");
 
-**Use `ensurePut(path, value)`**
+JsonPath.compile("$.scores[+]").add(jo, 100);       // append
+JsonPath.compile("/name").replace(jo, "Alice");     // target must exist
+JsonPath.compile("$.active").remove(jo);            // remove target
+```
 
-Creates intermediate nodes if necessary.
+Result:
+```json
+{
+  "name": "Alice",
+  "scores": [90, 95, 100]
+}
+```
+
+> **Note**: `add()`, `replace()`, and `remove()` follow JSON Patch mutation semantics.
+
+**`put(path, value)`**
+- Object member:
+  - Missing → inserted
+  - Existing → overwritten
+- Array:
+  - Index in `[0, size - 1]` → overwritten
+  - `[size]` or `[+]`(JSON Path) or `/-`(JSON Pointer) → append to array tail
+  - Index > size → ERROR
+
+**`putMulti(path, value)`**
+- Writes the same value to every matched target location
+- Write semantics are otherwise the same as `put()`
+
+```java
+JsonPath.compile("/babies/2").put(jo, JsonObject.of("name", "Baby-3"));
+JsonPath.compile("$.babies[*].age").putMulti(jo, 9);
+```
+
+**`ensurePut(path, value)`**
+
+- Creates intermediate nodes if necessary
+- Write semantics are otherwise the same as `put()`
 ```java
 new JsonObject().ensurePutByPath("$.cc.dd[0]", 100);
 ```

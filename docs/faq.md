@@ -167,7 +167,7 @@ A practical evaluation path is:
 1. Start with [Getting Started](/docs/getting_started)
 2. Read [Modeling (OBNT)](/docs/modeling) to understand the core mental model
 3. Compare `POJO`, `JOJO`, and raw nodes for your own payload shape
-4. Check [Navigation](/docs/navigation), [Transformation](/docs/transformation), and [Validation](/docs/validation) if your workflow goes beyond parsing
+4. Check [Navigating](/docs/navigating), [Patching](/docs/patching), and [Validating](/docs/validating) if your workflow goes beyond parsing
 5. Review [Benchmarks](/docs/benchmarks) with your own workload in mind
 
 That path usually makes it clear whether SJF4J is just interesting, or genuinely useful for your application architecture.

@@ -117,6 +117,35 @@
   padding: 5px 0;
 }
 
+.vp-doc p:has(img[alt="License"]) {
+  margin: 10px 0 18px;
+}
+
+.vp-doc p:has(img[alt="License"]) a {
+  display: inline-block;
+  vertical-align: bottom;
+  margin: 0 8px 8px 0;
+  padding: 0;
+  line-height: 0;
+}
+
+.vp-doc p:has(img[alt="License"]) > img {
+  display: inline-block;
+  vertical-align: bottom;
+  margin: 0 8px 8px 0;
+}
+
+.vp-doc p:has(img[alt="License"]) a img {
+  display: block;
+  margin: 0;
+}
+
+.vp-doc p:has(img[alt="License"]) br {
+  display: block;
+  margin-bottom: 8px;
+  content: "";
+}
+
 @media (max-width: 768px) {
   .VPHero {
     padding-top: calc(var(--vp-nav-height) + var(--vp-layout-top-height, 0px) + 32px) !important;

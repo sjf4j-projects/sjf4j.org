@@ -46,9 +46,9 @@ All documentation lives in Markdown files:
 | `docs/getting_started.md` | Docs landing page |
 | `docs/modeling.md` | Modeling (OBNT) |
 | `docs/parsing.md` | Parsing (Codec) |
-| `docs/navigation.md` | Navigation (JSON Path) |
-| `docs/transformation.md` | Transformation (JSON Patch) |
-| `docs/validation.md` | Validation (JSON Schema) |
+| `docs/navigating.md` | Navigating (JSON Path) |
+| `docs/patching.md` | Patching (JSON Patch) |
+| `docs/validating.md` | Validating (JSON Schema) |
 | `docs/benchmarks.md` | Benchmark results |
 | `docs/faq.md` | FAQ |
 
@@ -94,9 +94,9 @@ sidebar: [
       { text: 'Benchmarks', link: '/docs/benchmarks' },
       { text: 'Modeling (OBNT)', link: '/docs/modeling' },
       { text: 'Parsing (Codec)', link: '/docs/parsing' },
-      { text: 'Navigation (JSON Path)', link: '/docs/navigation' },
-      { text: 'Transformation (JSON Patch)', link: '/docs/transformation' },
-      { text: 'Validation (JSON Schema)', link: '/docs/validation' },
+      { text: 'Navigating (JSON Path)', link: '/docs/navigating' },
+      { text: 'Patching (JSON Patch)', link: '/docs/patching' },
+      { text: 'Validating (JSON Schema)', link: '/docs/validating' },
       // ...existing items...
       { text: 'New Feature', link: '/docs/new-feature' },   // ← add here
     ],

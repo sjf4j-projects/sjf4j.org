@@ -3,7 +3,7 @@ title: "Java JSON Path and JSON Pointer"
 description: "Query and mutate Java object graphs with RFC 9535 JSON Path and RFC 6901 JSON Pointer on SJF4J's unified node model."
 ---
 
-# Navigation (JSON Path)
+# Navigating (JSON Path)
 SJF4J supports two standardized path syntaxes:
 - [JSON Path (RFC 9535)](https://www.rfc-editor.org/rfc/rfc9535)
 - [JSON Pointer (RFC 6901)](https://www.rfc-editor.org/rfc/rfc6901)
@@ -30,9 +30,9 @@ List<Integer> scores1 = path.find(node, Integer.class);
 List<Integer> scores2 = path.find(jo, Integer.class);
 ```
 
-### Use `JsonObject` / `JsonArray`
+### Use `JsonObject`
 
-`JsonObject` and `JsonArray` provide convenient shortcut methods for using `JsonPath`.  
+`JsonObject`/`JsonArray`/`JOJO`/`JAJO` provide convenient shortcut methods for using `JsonPath`.  
 These methods follow the naming pattern `*ByPath()`.
 
 For example:
@@ -42,7 +42,6 @@ JsonPath.compile("$.user.role").getString(jo);
 // Equivalent to:
 jo.getStringByPath("$.user.role");
 ```
-
 
 ### Path Evaluation
 
@@ -129,22 +128,6 @@ Result:
 If a segment exists but is null, it is treated as non-navigable and replaced with a container.
 
 
-### Cache the JsonPaths
-
-SJF4J provides a built-in global path cache designed for workloads that compile dynamic JSON-Path expressions.
-
-By default, the cache is backed by a `ConcurrentHashMap`.  
-For advanced scenarios, the cache strategy can be customized via `Sjf4jConfig.Builder.pathCache(...)`.
-
-```java
-JsonPath p1 = JsonPath.compileCached("$.a.b[0].c");
-JsonPath p2 = JsonPath.compileCached("$.a.b[0].c");
-
-assertSame(p1, p2);
-```
-This avoids repeated compilation of identical expressions 
-and helps maintain consistent performance in dynamic query workloads.
-
 ## JSON Path Syntax
 SJF4J fully supports the [JSON Path (RFC 9535)](https://www.rfc-editor.org/rfc/rfc9535) specification,
 including `filters`, `functions`, `descent`, `unions`, `slicing`, `function calls`, and so on.
@@ -229,6 +212,28 @@ but only accepts RFC 6901 pointer expressions.
 JsonPointer.compile("/scores/2").remove(jo);
 
 String s = jo.getStringByPath("/scores/3");
+```
+
+## Global Path Cache
+
+SJF4J provides a built-in global cache for compiled JSON Path expressions.
+
+It avoids repeated compilation of identical paths and improves performance
+in dynamic but reused query workloads.
+```java
+JsonPath p1 = JsonPath.compileCached("$.a.b[0].c");
+JsonPath p2 = JsonPath.compileCached("$.a.b[0].c");
+
+assertSame(p1, p2);
+```
+By default, the cache is backed by a `ConcurrentHashMap`.
+
+**Note:** since the cache is unbounded, ensure path expressions are reasonably reused
+to avoid excessive memory growth.
+
+For advanced scenarios, the cache strategy can be customized via:
+```java
+Sjf4jConfig.Builder.pathCache((expr, compiler) -> {...});
 ```
 
 

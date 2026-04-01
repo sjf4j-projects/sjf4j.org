@@ -10,8 +10,8 @@ hero:
       text: Getting Started
       link: /docs/getting_started
     - theme: alt
-      text: Docs
-      link: /docs/modeling
+      text: "⚡ Benchmarks"
+      link: /docs/benchmarks
 ---
 
 <div class="vp-doc" style="max-width: 1120px; margin: 0 auto; padding: 0.1rem 1.5rem 2rem;">
@@ -35,19 +35,19 @@ SJF4J requires `JDK 8` and has no external dependencies.
     <a href="/docs/parsing">Learn more</a>
   </div>
   <div class="feature-card">
-    <h3>🔭 Navigation (JSON Path)</h3>
+    <h3>🔭 Navigating (JSON Path)</h3>
     <p>Enables declarative querying and precise structural navigation over the object model.</p>
-    <a href="/docs/navigation">Learn more</a>
+    <a href="/docs/navigating">Learn more</a>
   </div>
   <div class="feature-card">
-    <h3>🔧 Transformation (JSON Patch)</h3>
+    <h3>🔧 Patching (JSON Patch)</h3>
     <p>Applies standard-compliant structural mutations through JSON Patch operations.</p>
-    <a href="/docs/transformation">Learn more</a>
+    <a href="/docs/patching">Learn more</a>
   </div>
   <div class="feature-card">
-    <h3>✅ Validation (JSON Schema)</h3>
+    <h3>✅ Validating (JSON Schema)</h3>
     <p>Enforces structural and semantic constraints using modern JSON Schema specifications.</p>
-    <a href="/docs/validation">Learn more</a>
+    <a href="/docs/validating">Learn more</a>
   </div>
   <div class="feature-card">
     <h3>⚡ Benchmarks</h3>

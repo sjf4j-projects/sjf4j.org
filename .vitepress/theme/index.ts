@@ -60,20 +60,6 @@ const theme: Theme = {
           h(
             'a',
             {
-              href: 'https://github.com/sjf4j-projects/sjf4j/actions/workflows/gradle.yml?query=branch%3Amain',
-              target: '_blank',
-              rel: 'noreferrer',
-            },
-            [
-              h('img', {
-                alt: 'Build',
-                src: 'https://img.shields.io/github/actions/workflow/status/sjf4j-projects/sjf4j/gradle.yml?branch=main',
-              }),
-            ]
-          ),
-          h(
-            'a',
-            {
               href: 'https://github.com/sjf4j-projects/sjf4j/stargazers',
               target: '_blank',
               rel: 'noreferrer',

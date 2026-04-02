@@ -81,7 +81,7 @@ Use `copy(targetPath, sourcePath)` to copy values.
 ```java
 .copy("displayName", "name")
 .copy("city", "/profile/city")
-.copy("$.friends[0].school", "/school")
+.ensureCopy("$.friends[0].school", "/school")
 ```
 
 Both `targetPath` and `sourcePath`: 
@@ -94,14 +94,14 @@ Use `value(targetPath, value)` to assign a constant value to one single target l
 ```java
 .value("status", "ACTIVE")
 .value("/meta/badboy", false)
-.value("$.scores[0]", 60)
+.ensureValue("$.scores[0]", 60)
 ```
 
 ### Compute Mapping
 
-Use `compute(targetPath, (root, parent, current) -> ...)` to compute target values dynamically.
+Use `compute(targetPath, ...)` to compute target values dynamically.
 ```java
-.compute("level", (root, parent, current) -> {
+.compute("level", root -> {
     String level = root.getStringByPath("$.profile.level");
     return "VIP".equals(level) ? "LEVEL-1" : "LEVEL-2";
 })
@@ -150,7 +150,7 @@ NodeMapper<User, UserDto> mapper = NodeMapper
         .builder(User.class, UserDto.class)
         .copy("name", "name")
         .value("name", "A")
-        .compute("name", (root, parent, current) -> "B")
+        .compute("name", root -> "B")
         .build();
 ```
 Result:

@@ -192,7 +192,7 @@ For native Java object graphs, `Map/List` is fastest, while `JOJO` offers a nota
 **Summary**:
 
 - SJF4J shows strong performance in `compile` and `query` workloads, 
-  while plus providing `mutation` operations.
+  while also providing `mutation` operations.
 - Within SJF4J, `Map/List` gives the best raw speed, while `JOJO` stays much closer to `Map/List` than plain `POJO` does.
 
 ## JSON Schema Validation Benchmark

@@ -52,7 +52,7 @@ SJF4J requires `JDK 8` and has no external dependencies.
   <div class="feature-card">
     <h3>🔀 Mapping</h3>
     <p>Object graph mapping and transformation, supporting DTO projection.</p>
-    <a href="/docs/benchmarks">Learn more</a>
+    <a href="/docs/mapping">Learn more</a>
   </div>
 </div>
 

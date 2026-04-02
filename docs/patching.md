@@ -1,6 +1,6 @@
 ---
-title: "Java JSON Patch and Merge Patch"
-description: "Apply RFC 6902 JSON Patch and RFC 7386 Merge Patch to Java JSON objects, arrays, and POJO or JOJO nodes."
+title: "Java JSON Patch, Merge Patch, and Partial Updates"
+description: "Apply RFC 6902 JSON Patch and RFC 7386 JSON Merge Patch to existing Java object graphs, including JsonObject, JsonArray, Map, List, POJO, and JOJO nodes."
 ---
 
 # Patching (JSON Patch)
@@ -11,13 +11,15 @@ SJF4J supports two standardized patch formats:
 
 ## Patching with `JsonPatch`
 
-`JsonPatch` enables declarative, path-based transformations on OBNT.
+`JsonPatch` modifies an existing structure in place using declarative, path-based partial updates.
 
-A `JsonPatch` is an ordered list of patch operations (`PatchOp`),
-applied sequentially to a target node.
+Its operations and processing semantics follow RFC 6902 directly.
+If you are familiar with JSON Patch, you can use `JsonPatch` with the same mental model.
 
 ### Applying a Patch 
 
+A `JsonPatch` is an ordered list of patch operations (`PatchOperation`),
+applied sequentially to a target node.
 ```java
 JsonObject node = JsonObject.fromJson("""
 {
@@ -38,7 +40,7 @@ JsonPatch patch = JsonPatch.fromJson("""
 patch.apply(node);
 ```
 
-After applying:
+Result:
 ```json
 {
     "name": "Alice",
@@ -52,10 +54,16 @@ Patch operations:
 - Stop immediately if any operation fails
 
 Patch execution is ***non-transactional***:
-operations applied before a failure are not rolled back.
+- Patch application is atomic per operation.
+- If an operation fails:
+  - The patch process stops
+  - An exception is thrown
+  - Previously applied operations remain applied
 
-### Generating a Patch with `JsonPatch.diff()`
 
+### Generating a Patch
+
+Use `JsonPatch.diff()`
 ```java
 List<Integer> source = Arrays.asList(1, 2, 3);
 List<Integer> target = Arrays.asList(1, 5, 3, 4);
@@ -81,60 +89,54 @@ assertEquals(target, another);
 
 `diff()` computes a structural transformation that converts `source` into `target`.
 
-## Patch Operation Model
+## Operation Model
 
-Each `PatchOp` contains:
+`PatchOperation` contains:
 - `op` — operation name
 - `path` — target location (JSON Pointer syntax)
 - `value` — optional
 - `from` — source location (for `move` and `copy`)
 
-All paths use **JSON Pointer (RFC 6901)** syntax.
+### Standard Operations 
 
-### Standard Operations (RFC 6902)
+Defined in (RFC 6902):
 
 | Operation | Description                                        | Example                                            |
 |-----------|----------------------------------------------------|----------------------------------------------------|
 | `add`     | Adds a value at the target path                    | `{"op": "add", "path": "/a/b/c", "value": "foo"}`  |
-| `remove`  | Removes the value at the target path (must exist)  | `{"op": "remove", "path": "/a/b/c"}`               |
 | `replace` | Replaces the value at the target path (must exist) | `{"op": "replace", "path": "/a/b/c", "value": 42}` |
+| `remove`  | Removes the value at the target path (must exist)  | `{"op": "remove", "path": "/a/b/c"}`               |
 | `move`    | Moves a value from one location to another         | `{"op": "move", "from": "/a/b", "path": "/a/j"}`   |
 | `copy`    | Copies a value from one location to another        | `{"op": "copy", "from": "/a/b", "path": "/a/k"}`   |
 | `test`    | Asserts that the value equals the expected value   | `{"op": "test", "path": "/a/b/c", "value": "foo"}` |
 
 
-### SJF4J Extensions
+### Extensions (by SJF4J)
 
 | Operation   | Description                                                            | Example                                             |
 |-------------|------------------------------------------------------------------------|-----------------------------------------------------|
 | `exist`     | Asserts that the target path exists                                    | `{"op": "exist", "path": "/a/b/c"}`                 |
+| `put`       | Similar to `add`, but replaces array elements instead of inserting.    | `{"op": "put", "path": "/e/2", "value": "z"}`       |
 | `ensurePut` | Ensures the path exists and inserts value, creating intermediate nodes | `{"op": "ensurePut", "path": "/x/y", "value": "z"}` |
 
-**Error Handling**
 
-- Patch application is atomic per operation.
-- If an operation fails:
-  - The patch process stops
-  - An exception is thrown
-  - Previously applied operations remain applied (non-transactional)
+### Define custom operations
 
-### Defining custom `PatchOp`
-
-Custom operations can be registered via `PatchOpRegistry`.
+Custom operations can be registered via `OperationRegistry`.
 ```java
-PatchOpRegistry.register("add", (target, op) -> {           // The Standard 'add' operation
+OperationRegistry.register("add", (target, op) -> {     // The Standard 'add' operation
     op.getPath().add(target, op.getValue());
 });
 ```
 
-## Merging under JSON Merge Patch (RFC 7386)
+## JSON Merge Patch (RFC 7386)
 
 Unlike JSON Patch (RFC 6902), [JSON Merge Patch (RFC 7386)](https://datatracker.ietf.org/doc/html/rfc7386):
 - Is object-based
 - Does not use paths
 - Is not operation-based
 
-### `Patches.mergeRfc7386(source, patch)`
+**`Patches.mergeRfc7386(source, patch)`**
 
 Follows RFC 7386 semantics:
 - If a field exists in both target and patch → replaced
@@ -143,10 +145,9 @@ Follows RFC 7386 semantics:
 - Arrays → replaced as a whole
 
 
-### `Patches.merge(source, patch, overwrite, deepCopy)`
+**`Patches.merge(source, patch, overwrite, deepCopy)`**
 
-Compared to `mergeRfc7386()`, `merge()` provides more flexible and customizable merging semantics.
-
+Compared to `mergeRfc7386()`, `merge()` provides more flexible and customizable merging semantics.  
 Additional behaviors:
 - `overwrite`
   - `true` → replace existing values
@@ -168,10 +169,6 @@ Because OBNT operates on plain Java objects:
 
 `JsonPatch` in SJF4J is not a wrapper around JSON text —
 it is a structural transformation mechanism for OBNT.
-
-
-
-
 
 
 

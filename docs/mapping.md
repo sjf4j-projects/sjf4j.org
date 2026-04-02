@@ -1,21 +1,40 @@
 ---
-title: ""
-description: ""
+title: "Java Object Mapping and Structural Projection"
+description: "Map between POJO, JOJO, Map, List, and other OBNT structures in Java using SJF4J's NodeMapper and annotation-based mapping rules."
 ---
 
 # Mapping
 
-SJF4J provides a structural mapping capability through `NodeMapper`,
-enabling projection from one object graph to another.  
-It operates directly on **OBNT (Object-Based Node Tree)**,
-and works uniformly across Java objects and JSON-like structures.
+SJF4J provides structural mapping through `NodeMapper`,
+allowing one object graph to be projected into another.
 
-## Usage 
+It operates directly on OBNT and works across Java objects and JSON-like structures.
 
-NodeMapper supports both imperative and declarative mapping styles:
+## Mapping Model
 
-**Approach 1 — Direct Implementation**  
-Use direct implementation when full control is required.
+Mapping (`NodeMapper`) and [Patching](patching) (`JsonPatch`) solve different problems.
+
+| Capability   | Description                             |
+|--------------|-----------------------------------------|
+| **Patching** | Modify an existing structure in place   |
+| **Mapping**  | Construct a new structure from a source |
+
+
+`NodeMapper` follows a simple projection pipeline:
+```mermaid
+flowchart LR
+    A["Source (JOJO/POJO)"] --> B["Auto Mapping (with nested)"]
+    B --> C[Apply mapping actions: copy / value / compute ...]
+    C --> D["Target (JOJO/POJO)"]
+```
+
+
+## Ways to Use 
+
+`NodeMapper` supports both imperative and declarative mapping styles:
+
+**Way 1 — Direct Implementation**  
+Use direct implementation when full control is needed.
 ```java
 public class StudentMapper implements NodeMapper<Student, StudentDto> { 
     @Override
@@ -25,30 +44,17 @@ public class StudentMapper implements NodeMapper<Student, StudentDto> {
 }
 ```
 
-**Approach 2 — Builder (Declarative Mapping)**  
-Use builder when mapping is primarily structural.
+**Way 2 — Builder (Declarative Mapping)**  
+Use the builder when mapping is mostly structural.
 ```java
 NodeMapper<Student, StudentDto> mapper = NodeMapper
-    .builder(Student.class, StudentDto.class)
-    .copy(...)
-    .value(...)
-    .build();
-```
+        .builder(Student.class, StudentDto.class)
+        .copy(...)
+        .value(...)
+        .build();
 
-Then map it:
-```java
 StudentDto studentDto = mapper.map(student);
 ```
-
-## Mapping vs Patching
-
-Mapping (`NodeMapper`) and Patching (`JsonPatch`) solve different problems.
-
-| Capability   | Description                             |
-|--------------|-----------------------------------------|
-| **Patching** | Modify an existing structure in place   |
-| **Mapping**  | Construct a new structure from a source |
-
 
 ## Core Mapping Actions
 
@@ -59,7 +65,7 @@ Custom mapping is defined as an ordered set of actions.
 By default, `NodeMapper` performs implicit mapping:
 - Same-name fields are copied automatically
 - Nested objects are mapped recursively 
-- Equivalent to `Sjf4j.fromNode(sourceNode, targetType)`
+- Equivalent to `Sjf4j.fromNode(..)`
 
 ```java
 NodeMapper<User, UserDto> mapper = NodeMapper
@@ -75,51 +81,47 @@ Use `copy(targetPath, sourcePath)` to copy values.
 ```java
 .copy("displayName", "name")
 .copy("city", "/profile/city")
-.copy("$.friends[*].school", "/school")
+.copy("$.friends[0].school", "/school")
 ```
 
-Path types:
-- Field name: `name`
-- JSON Path: `$.friends[*].school`
-- JSON Pointer: `/profile/city`
-
-**Rules:**
-- `targetPath` may match multiple nodes
-- `sourcePath` must resolve to a single value
-- If multiple targets match, the same value is assigned to each
+Both `targetPath` and `sourcePath`: 
+- may be a field name, JSON Path, or JSON Pointer
+- must resolve to a single value
 
 ### Value Mapping
 
-Use `value(targetPath, value)` to assign constants.
+Use `value(targetPath, value)` to assign a constant value to one single target location.
 ```java
 .value("status", "ACTIVE")
 .value("/meta/badboy", false)
-.value("$.scores[*]", 60)
+.value("$.scores[0]", 60)
 ```
-
-If multiple targets match, the same value is applied to all.
 
 ### Compute Mapping
 
-Use `compute(...)` for dynamic values.
+Use `compute(targetPath, (root, parent, current) -> ...)` to compute target values dynamically.
 ```java
-.compute("level", root -> {
+.compute("level", (root, parent, current) -> {
     String level = root.getStringByPath("$.profile.level");
     return "VIP".equals(level) ? "LEVEL-1" : "LEVEL-2";
 })
 ```
 
-With current context:
+Example with matched target context:
 ```java
-.compute("$.friends[*].grade", (root, current) -> {
-    Integer score = Nodes.toInt(Nodes.getInObject(current, "score"));
+.compute("$.friends[*].grade", (root, parent, current) -> {
+    Integer score = Nodes.toInt(Nodes.getInObject(parent, "score"));
     return score != null && score >= 90 ? "A" : "B";
 })
 ```
 
 Parameters:
+- `targetPath` — may resolve to multiple values
 - `root` — source root
-- `current` — source node matched by path
+- `parent` — the parent container of the matched target location
+- `current` — the matched target value
+
+The function is evaluated once per matched target location.
 
 ### Remove
 
@@ -133,6 +135,7 @@ Behavior:
 - not exist → ignored
 - removable (`Map`, `JsonObject`) → removed
 - otherwise → set to `null`
+  - For non-removable targets, removal degrades to null assignment.
 
 ### Ordered Execution
 
@@ -145,100 +148,58 @@ Mapping follows this pipeline:
 ```java
 NodeMapper<User, UserDto> mapper = NodeMapper
         .builder(User.class, UserDto.class)
-        .copy("name", "id")
+        .copy("name", "name")
         .value("name", "A")
-        .compute("name", root -> "B")
+        .compute("name", (root, parent, current) -> "B")
         .build();
 ```
 Result:
 ```java
 name = "B"
 ```
-**Last write wins.**
 
-### Nested Mapping
+Actions are applied in declaration order. 
+If multiple actions write the same location, the last write wins.
 
-Use `with(...)` to register nested mappers.
+## Nested Mapping
 
+Use `with(...)` to make nested mappers available during conversion.
+```java
 NodeMapper<Order, OrderDto> orderMapper = ...;
 
 NodeMapper<User, UserDto> userMapper = NodeMapper
-.builder(User.class, UserDto.class)
-.with(orderMapper)
-.build();
-Key Rule
+        .builder(User.class, UserDto.class)
+        .with(orderMapper)
+        .build();
+```
 
-Nested mappers are not independent actions.
+**Rules**:
+- Nested mappers are not independent actions.
+- They are used only when a mapped value needs nested type conversion.
+- They do not:
+  - scan target fields on their own
+  - write fields independently
+  - override action order
 
-They are used only when a mapped value needs nested type conversion.
-
-Order -> OrderDto
-
-They do not:
-
-scan target fields on their own
-write fields independently
-override action order
-Example: Nested Mapper Does Not Override Actions
+Example: Nested Mappers Do Not Override Explicit Actions
+```java
 NodeMapper<User, UserDto> mapper = NodeMapper
-.builder(User.class, UserDto.class)
-.value("$.orders[1].price", 30)
-.with(orderMapper)
-.build();
+        .builder(User.class, UserDto.class)
+        .value("$.orders[1].price", 30)
+        .with(orderMapper)
+        .build();
+```
 
 Result:
-
+```java
 orders[1].price = 30
-
-with(orderMapper) only helps when an Order needs to be mapped into an OrderDto.
-It does not override explicit actions like value(...).
-
-Supported Structures
-
-NodeMapper works with:
-
-POJO
-JOJO (JsonObject)
-Map<String, Object>
-List
-arrays
-Typical Use Cases
-DTO Projection
-.copy("username", "name")
-.value("source", "api")
-Flatten Structure
-.copy("city", "profile.address.city")
-Aggregation
-.compute("avgScore", root -> ...)
-Nested Mapping
-.with(orderMapper)
-Summary
-
-NodeMapper provides a declarative structural mapping model on top of OBNT.
-
-It supports:
-
-direct Java implementation for simple mappers
-builder-based declarative mapping for structural cases
-default mapping with ordered overrides
-path-based extraction
-computed fields
-nested object graph mapping
-
-It complements JSON Patch:
-
-Patch   -> modify existing data
-Mapper  -> construct new data
-
-Together, they form a complete structural processing model in SJF4J.
+```
 
 
-
-
-
-
-
-
-
-
+## Why Mapping in OBNT
+In the POJO world, tools like `MapStruct` and `Spring Converter` provide mapping capabilities.  
+Mapping in SJF4J fills the same gap for OBNT, useful for:
+- DTO projection
+- API shape conversion
+- Structural normalization between different object models
 

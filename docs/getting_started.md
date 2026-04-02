@@ -1,3 +1,8 @@
+---
+title: "Getting Started with SJF4J"
+description: "Install SJF4J, choose a JSON backend, and learn the core APIs for parsing, modeling, querying, patching, mapping, and validation in Java."
+---
+
 # SJF4J — Simple JSON Facade for Java
 
 ![License](https://img.shields.io/github/license/sjf4j-projects/sjf4j)
@@ -234,4 +239,3 @@ SJF4J began as an exploration of what JSON-Oriented Development might look like 
 
 If you find the project interesting,
 contributions of all kinds — code, docs, bug reports, discussions, examples, or benchmarks — are welcome~!
-

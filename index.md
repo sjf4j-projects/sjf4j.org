@@ -26,32 +26,32 @@ SJF4J requires `JDK 8` and has no external dependencies.
 <div class="feature-grid">
   <div class="feature-card">
     <h3>🌳 Modeling (OBNT)</h3>
-    <p>Defines a unified object model where typed Java fields and dynamic JSON structure coexist.</p>
+    <p>Defines a unified object model where typed Java fields and dynamic JSON structures coexist.</p>
     <a href="/docs/modeling">Learn more</a>
   </div>
   <div class="feature-card">
     <h3>📦 Parsing (JSON / YAML)</h3>
-    <p>Provides a unified facade for decoding and encoding structured data across multiple formats.</p>
+    <p>Provides a unified facade for parsing and serialization across multiple formats.</p>
     <a href="/docs/parsing">Learn more</a>
   </div>
   <div class="feature-card">
     <h3>🔭 Navigating (JSON Path)</h3>
-    <p>Enables declarative querying and precise structural navigation over the object model.</p>
+    <p>Enables declarative querying and precise navigation over object graphs.</p>
     <a href="/docs/navigating">Learn more</a>
   </div>
   <div class="feature-card">
     <h3>🔧 Patching (JSON Patch)</h3>
-    <p>Applies standard-compliant structural mutations through JSON Patch operations.</p>
+    <p>Applies in-place structural updates using RFC 6902 JSON Patch operations with consistent path-based semantics.</p>
     <a href="/docs/patching">Learn more</a>
   </div>
   <div class="feature-card">
     <h3>✅ Validating (JSON Schema)</h3>
-    <p>Enforces structural and semantic constraints using modern JSON Schema specifications.</p>
+    <p>Validates data against JSON Schema with full structural and semantic constraint support.</p>
     <a href="/docs/validating">Learn more</a>
   </div>
   <div class="feature-card">
-    <h3>⚡ Benchmarks</h3>
-    <p>Delivers high performance with minimal overhead while providing a unified JSON-semantic processing model.</p>
+    <h3>🧩 Mapping</h3>
+    <p>Transforms object graphs through declarative and programmatic mapping, enabling projection and structural reshaping across OBNT.</p>
     <a href="/docs/benchmarks">Learn more</a>
   </div>
 </div>

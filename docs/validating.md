@@ -1,19 +1,25 @@
 ---
 title: "Java JSON Schema Validation"
-description: "Validate Java JSON nodes with JSON Schema Draft 2020-12 using SJF4J's OBNT model without extra serialization steps."
+description: "Validate Java object graphs directly with JSON Schema Draft 2020-12 using SJF4J's JsonSchema APIs and OBNT model without extra serialization steps."
 ---
 
 # Validating (JSON Schema)
 
 SJF4J offers full support for [JSON Schema Draft 2020-12](https://json-schema.org/) ,
 with verified compliance via [Bowtie](https://bowtie.report/#/implementations/java-sjf4j).  
-In local Bowtie benchmarks against the official test suite,
-SJF4J ranks among the fastest Java implementations.
-
-Validation in SJF4J operates directly on OBNT,
+Validation  **operates directly on OBNT**,
 no intermediate JSON serialization or AST conversion is required.
 
-## Creating and Using `JsonSchema`
+## Using `JsonSchema`
+
+`JsonSchema` is SJF4J's runtime abstraction of a JSON Schema document.
+It follows the JSON Schema specification directly.
+
+In practice, this means:
+- Standard JSON Schema keywords keep their standard meaning
+- Draft 2020-12 features are exposed as-is
+- If you already know JSON Schema, you can use `JsonSchema` directly
+
 Example: validating a value by `type`
 ```java
 JsonSchema schema = JsonSchema.fromJson("""
@@ -42,15 +48,31 @@ JsonSchema schema = JsonSchema.fromJson("""
 schema.compile();
 
 Map<String, Object> map = Map.of("name", "Alice");
-assertTrue(schema.isValid(map));                    // Map validated directly
+assertTrue(schema.isValid(map));                    // Validate on Map
 
 MyPojo pojo = new MyPojo();
 pojo.setName("Tom");
-assertFalse(schema.isValid(pojo));                  // POJO validated directly
+assertFalse(schema.isValid(pojo));                  // Validate on POJO
 ```
 
+### Validation API
 
-## Declarative Validation via `@ValidJsonSchema`
+Common `JsonSchema` entry points:
+
+```java
+ValidationResult validate(Object node)
+ValidationResult validateFailFast(Object node)
+boolean isValid(Object node)
+void requireValid(Object node)
+```
+
+- `validate(node)` returns a full `ValidationResult`
+- `validateFailFast(node)` returns as soon as the first validation error is found
+- `isValid(node)` is a convenience boolean check with fail-fast semantics
+- `requireValid(node)` throws if the value is invalid
+
+
+## Declaring via `@ValidJsonSchema`
 
 SJF4J enables declarative schema binding for domain classes.
 
@@ -121,7 +143,7 @@ Supported schemes:
 Network URLs (e.g. `https://`) are treated as identifiers unless explicitly enabled.
 
 
-## JSON Schema vs JSR 380 (Jakarta Validation)
+## JSON Schema vs JSR 380
 
 Typical separation of responsibilities:
 - **[JSR 380 (Bean / Jakarta Validation)](https://beanvalidation.org/2.0-jsr380/)** → Validates **domain invariants** inside the Java model
@@ -138,6 +160,17 @@ Typical separation of responsibilities:
 | Typical usage         | Domain invariants            | Data contracts and policies                |
 
 Together, they may form a layered validation model **spanning domain invariants and runtime data contracts.**
+
+
+## Performance
+In local Bowtie draft 2020-12 benchmarks,
+SJF4J consistently ranks among the top-performing Java implementations.
+(See [Benchmarks](https://sjf4j.org/docs/benchmarks#json-schema-validation-benchmark))
+
+This performance is primarily due to its direct validation over native object graphs, avoiding:
+- Re-serialization
+- Re-parsing
+- Intermediate tree construction
 
 
 ## Why Validation in OBNT
@@ -158,14 +191,3 @@ Since validation operates directly on OBNT:
 
 Validation is therefore a structural capability of OBNT,
 not a separate JSON-processing pipeline.
-
-
-## Performance
-In local Bowtie draft 2020-12 benchmarks,
-SJF4J consistently ranks among the top-performing Java implementations.
-(See [Benchmarks](https://sjf4j.org/docs/benchmarks#json-schema-validation-benchmark))
-
-This performance is primarily due to its direct validation over native object graphs, avoiding:
-- Re-serialization
-- Re-parsing
-- Intermediate tree construction

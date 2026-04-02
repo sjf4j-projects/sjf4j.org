@@ -1,6 +1,6 @@
 ---
 title: "Parsing JSON, YAML, and Properties in Java"
-description: "Parse and serialize JSON, YAML, Java Properties, POJO, JOJO, and raw node trees through one Java codec API."
+description: "Parse, serialize, and convert JSON, YAML, Java Properties, POJO, JOJO, and OBNT node structures through SJF4J's unified codec APIs."
 ---
 
 # Parsing (Codec)

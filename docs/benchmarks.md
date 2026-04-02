@@ -1,6 +1,6 @@
 ---
-title: "Java JSON Library Benchmarks"
-description: "Review JMH benchmarks comparing SJF4J with Jackson, Gson, Fastjson2, and Jayway JsonPath for parsing and query performance."
+title: "Java JSON and JsonPath Benchmarks"
+description: "Compare SJF4J with Jackson, Gson, Fastjson2, and Jayway JsonPath through JMH benchmarks for parsing, querying, and reflection-based object access."
 ---
 
 # Benchmarks
@@ -121,12 +121,12 @@ Source: [JsonPathCompareBenchmark.java](https://github.com/sjf4j-projects/sjf4j/
 
 Geometric mean, lower is better:
 
-| Benchmark group | SJF4J | Jayway | Result |
-|---|---:|---:|---:|
-| `compile` | `97.384 ns/op` | `124.862 ns/op` | SJF4J `1.28x` faster |
-| `query_definite` | `99.618 ns/op` | `236.808 ns/op` | SJF4J `2.38x` faster |
-| `query_indefinite` | `656.191 ns/op` | `1293.942 ns/op` | SJF4J `1.97x` faster |
-| `query_map_list_definite` | `31.297 ns/op` | `199.548 ns/op` | SJF4J `6.38x` faster |
+| Benchmark group             |           SJF4J |           Jayway |               Result |
+|-----------------------------|----------------:|-----------------:|---------------------:|
+| `compile`                   |  `97.384 ns/op` |  `124.862 ns/op` | SJF4J `1.28x` faster |
+| `query_definite`            |  `99.618 ns/op` |  `236.808 ns/op` | SJF4J `2.38x` faster |
+| `query_indefinite`          | `656.191 ns/op` | `1293.942 ns/op` | SJF4J `1.97x` faster |
+| `query_map_list_definite`   |  `31.297 ns/op` |  `199.548 ns/op` | SJF4J `6.38x` faster |
 | `query_map_list_indefinite` | `279.825 ns/op` | `1300.625 ns/op` | SJF4J `4.65x` faster |
 
 Representative query results:
@@ -146,10 +146,10 @@ $..price
 SJF4J can run JSONPath directly over multiple Java object models.  
 For native Java object graphs, `Map/List` is fastest, while `JOJO` offers a notably better performance profile than plain `POJO`.
 
-| Benchmark group | Map/List | JOJO | POJO |
-|---|---:|---:|---:|
-| `definite` | `31.149 ns/op` | `42.849 ns/op` | `94.216 ns/op` |
-| `indefinite` | `270.137 ns/op` | `372.569 ns/op` | `553.901 ns/op` |
+| Benchmark group |        Map/List |            JOJO |            POJO |
+|-----------------|----------------:|----------------:|----------------:|
+| `definite`      |  `31.149 ns/op` |  `42.849 ns/op` |  `94.216 ns/op` |
+| `indefinite`    | `270.137 ns/op` | `372.569 ns/op` | `553.901 ns/op` |
 
 **Summary**:
 

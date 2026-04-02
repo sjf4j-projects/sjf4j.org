@@ -1,6 +1,6 @@
 ---
-title: "Java JSON Path and JSON Pointer"
-description: "Query and mutate Java object graphs with RFC 9535 JSON Path and RFC 6901 JSON Pointer on SJF4J's unified node model."
+title: "Java JsonPath, JSON Pointer, and Query APIs"
+description: "Navigate, query, and update Java object graphs with RFC 9535 JsonPath, RFC 6901 JSON Pointer, and SJF4J query and mutation APIs."
 ---
 
 # Navigating (JSON Path)
@@ -8,7 +8,7 @@ SJF4J supports two standardized path syntaxes:
 - [JSON Path (RFC 9535)](https://www.rfc-editor.org/rfc/rfc9535)
 - [JSON Pointer (RFC 6901)](https://www.rfc-editor.org/rfc/rfc6901)
 
-## Path-Based Navigation and Mutation
+## Path Based Navigation
 SJF4J provides a unified, JSON-semantic path engine that works on all OBNT nodes.  
 
 
@@ -43,14 +43,14 @@ JsonPath.compile("$.user.role").getString(jo);
 jo.getStringByPath("$.user.role");
 ```
 
-### Path Evaluation
+### Query API
 
-**Path Evaluation Semantics**
+**Query Semantics**
 
 - `get*()` is strict: exactly one match expected.
 - `find*()` always returns a list.
 - `eval()` adapts based on match count.
-- If the path ends with a function call, the function result is returned.
+  - If the path ends with a function call, the function result is returned.
 
 
 | JsonPath Method            | 0 Match         | 1 Match         | &gt;1 Match     |
@@ -65,7 +65,6 @@ Strict vs semantic conversion:
 - `getAs*(node)` → cross-type conversion
 
 **Single Result**
-
 ```java
 String json = """
 {
@@ -90,6 +89,11 @@ String role3 = JsonPath.compile("$.user.role").get(jo, String.class);
 List<String> tags = jo.findByPath("$.tags[*]", String.class);
 
 List<Integer> firstTwo = jo.findByPath("$.scores[0:2]", Integer.class);
+```
+
+**Eval Result**
+```java
+int tags = jo.evalByPath("$.tags[*].count()", Integer.class);
 ```
 
 ### Mutation APIs
@@ -144,13 +148,8 @@ Result:
   - `[size]` or `[+]`(JSON Path) or `/-`(JSON Pointer) → append to array tail
   - Index > size → ERROR
 
-**`putMulti(path, value)`**
-- Writes the same value to every matched target location
-- Write semantics are otherwise the same as `put()`
-
 ```java
 JsonPath.compile("/babies/2").put(jo, JsonObject.of("name", "Baby-3"));
-JsonPath.compile("$.babies[*].age").putMulti(jo, 9);
 ```
 
 **`ensurePut(path, value)`**
@@ -170,29 +169,45 @@ Result:
 ```
 If a segment exists but is null, it is treated as non-navigable and replaced with a container.
 
+**`compute(path, (parent, current) -> ...)`**
+- Recomputes values at all matched locations
+- Evaluates the function once per matched location
+- `parent` is the container of the matched value
+- `current` is the existing value at that location (may be `null`)
+- The returned value replaces the current value
+- Returns the number of locations updated
+
+
+```java
+JsonPath.compile("$..version").compute(jo, (parent, current) -> 
+        current != null 
+        ? current 
+        : Nodes.getInObject(parent, "ver"));
+```
+
 
 ## JSON Path Syntax
 SJF4J fully supports the [JSON Path (RFC 9535)](https://www.rfc-editor.org/rfc/rfc9535) specification,
 including `filters`, `functions`, `descent`, `unions`, `slicing`, `function calls`, and so on.
 
-| Syntax        | Description                | Example                    |
-|---------------|----------------------------|----------------------------|
-| `$`           | Root                       | `$.name`                   |
-| `@`           | Current node (filter only) | `@.name`                   |
-| `.name`       | Object member              | `$.store.book`             |
-| `['name']`    | Quoted member              | `$['store']`               |
-| `[index]`     | Array index                | `$.book[0]`                |
-| `[*]`         | Wildcard                   | `$.store[*]`               |
-| `..`          | Recursive descent          | `$..author`                |
-| `[start:end]` | Array slice                | `$.*.book[1:3]`            |
-| `[a,b]`       | Union                      | `$.book[0,-1]`             |
-| `[?()]`       | Filter                     | `$..book[?(@.price < 10)]` |
-| `.func()`     | Function call              | `$..book.size()`           |
-| `[+]`         | Append (SJF4J extension)   | `$.book[+]`                |
+| Syntax        | Description                 | Example                    |
+|---------------|-----------------------------|----------------------------|
+| `$`           | Root                        | `$.name`                   |
+| `@`           | Current node (filter only)  | `@.name`                   |
+| `.name`       | Object member               | `$.store.book`             |
+| `['name']`    | Quoted member               | `$['store']`               |
+| `[index]`     | Array index                 | `$.book[0]`                |
+| `[*]`         | Wildcard                    | `$.store[*]`               |
+| `..`          | Recursive descent           | `$..author`                |
+| `[start:end]` | Array slice                 | `$.*.book[1:3]`            |
+| `[a,b]`       | Union                       | `$.book[0,-1]`             |
+| `[?()]`       | Filter                      | `$..book[?(@.price < 10)]` |
+| `.func()`     | Function call (end of path) | `$..book.size()`           |
+| `[+]`         | Append (array end)          | `$.book[+]`                |
 
-> Note: When a function appears at the end of a path, the function result is returned instead of a node list.
+> **Note**: When a function appears at the end of a path, the function result is returned instead of a node list.
 
-> Note: `[+]` is an SJF4J extension, not part of RFC 9535. It means append and is only valid in mutation contexts such as `add()` or `ensurePut()`.
+> **Note**: `[+]` is an extension, not part of RFC 9535. It means append and is only valid in mutation contexts such as `add()` or `ensurePut()`.
 
 **Filter Expressions**
 
@@ -316,6 +331,18 @@ double avgScore = jo.stream()
         .collect(Collectors.averagingDouble(s -> s));
 ```
 
+
+## Performance
+
+SJF4J JsonPath is designed for direct traversal over native Java object graphs with low structural overhead.
+
+- SJF4J delivers fast performance in JMH benchmarks.
+- Inside SJF4J, `Map/List` is fastest, `JOJO` is close behind, and plain `POJO` is slower.
+- `JOJO` is the best fit when you want typed models with a more JSON-native performance profile.
+
+See [Benchmarks](./benchmarks#json-path-benchmark) for the latest results and methodology.
+
+
 ## Why Path in OBNT
 
 SJF4J applies path navigation directly on plain Java objects (OBNT),
@@ -329,13 +356,3 @@ This means:
 
 In SJF4J, `JsonPath` is part of the core structural model,
 not an external query layer.
-
-## Performance
-
-SJF4J JsonPath is designed for direct traversal over native Java object graphs with low structural overhead.
-
-- SJF4J delivers fast performance in JMH benchmarks.
-- Inside SJF4J, `Map/List` is fastest, `JOJO` is close behind, and plain `POJO` is slower.
-- `JOJO` is the best fit when you want typed models with a more JSON-native performance profile.
-
-See [Benchmarks](./benchmarks#json-path-benchmark) for the latest results and methodology.

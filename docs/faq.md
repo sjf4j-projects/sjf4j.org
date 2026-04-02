@@ -1,6 +1,6 @@
 ---
-title: "SJF4J FAQ for Java JSON Development"
-description: "Find answers about SJF4J, JOJO, OBNT, supported JSON parsers, YAML support, performance overhead, JSON Path, JSON Patch, and JSON Schema in Java."
+title: "SJF4J FAQ"
+description: "Find answers about SJF4J architecture, OBNT, JOJO, backend libraries, YAML support, performance, JsonPath, JsonPatch, and JsonSchema usage in Java."
 ---
 
 # FAQ

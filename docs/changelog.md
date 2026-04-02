@@ -1,3 +1,8 @@
+---
+title: "SJF4J Changelog"
+description: "Track unreleased and published SJF4J changes, including new APIs, fixes, behavior changes, and performance-related updates."
+---
+
 # Changelog
 
 All notable changes to **SJF4J (Simple JSON Facade for Java)** will be documented in this file.

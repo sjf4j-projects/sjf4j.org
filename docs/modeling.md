@@ -1,6 +1,6 @@
 ---
-title: "Modeling and Java JSON Object Mapping (OBNT)"
-description: "Learn SJF4J's Object Based Node Tree for Java JSON object mapping across POJO, JOJO, JAJO, Map, List, and raw values."
+title: "Java JSON Modeling with OBNT"
+description: "Learn SJF4J's Object Based Node Tree model for representing structured data across POJO, JOJO, JAJO, Map, List, arrays, sets, and scalar values."
 ---
 
 # Modeling (OBNT)
@@ -246,9 +246,10 @@ jo.remove("extra");
 ```
 > `JsonArray` is the array counterpart of `JsonObject`, providing a similar set of APIs for array nodes.
 
-## Modeling Domain Objects with JOJO
-> JSON is flexible, while POJOs are strict.
+## Modeling Domain Objects
+JSON is flexible, while POJOs are strict.
 
+### With JOJO
 Mapping JSON directly into a POJO often means discarding undeclared fields,
 which may reduce the expressive power of the original JSON payload.  
 
@@ -310,7 +311,7 @@ List<String> allFriends = user.findByPath("$.friends..name", String.class);
 // ["Bill", "Cindy", "David"] -- all friends and friends of friends.
 ```
 
-### About JAJO
+### With JAJO
 JAJO is the array counterpart of JOJO, but not allowing additional fields.  
 The purpose of JAJO is *modeling rather than structure*. 
 
@@ -320,7 +321,6 @@ public class JsonPatch extends JsonArray {
     // ...
 }
 ```
-
 
 
 

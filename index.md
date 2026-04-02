@@ -36,12 +36,12 @@ SJF4J requires `JDK 8` and has no external dependencies.
   </div>
   <div class="feature-card">
     <h3>🔭 Navigating (JSON Path)</h3>
-    <p>Enables declarative querying and precise navigation over object graphs.</p>
+    <p>Enables declarative querying and precise navigation over object graphs using JSON Path.</p>
     <a href="/docs/navigating">Learn more</a>
   </div>
   <div class="feature-card">
     <h3>🔧 Patching (JSON Patch)</h3>
-    <p>Applies in-place structural updates using RFC 6902 JSON Patch operations with consistent path-based semantics.</p>
+    <p>Applies in-place structural updates using JSON Patch operations.</p>
     <a href="/docs/patching">Learn more</a>
   </div>
   <div class="feature-card">
@@ -50,8 +50,8 @@ SJF4J requires `JDK 8` and has no external dependencies.
     <a href="/docs/validating">Learn more</a>
   </div>
   <div class="feature-card">
-    <h3>🧩 Mapping</h3>
-    <p>Transforms object graphs through declarative and programmatic mapping, enabling projection and structural reshaping across OBNT.</p>
+    <h3>🔀 Mapping</h3>
+    <p>Object graph mapping and transformation, supporting DTO projection.</p>
     <a href="/docs/benchmarks">Learn more</a>
   </div>
 </div>

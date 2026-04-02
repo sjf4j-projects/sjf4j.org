@@ -1,4 +1,4 @@
----
+**---
 title: "Java JSON Patch, Merge Patch, and Partial Updates"
 description: "Apply RFC 6902 JSON Patch and RFC 7386 JSON Merge Patch to existing Java object graphs, including JsonObject, JsonArray, Map, List, POJO, and JOJO nodes."
 ---
@@ -11,8 +11,8 @@ SJF4J supports two standardized patch formats:
 
 ## Patching with `JsonPatch`
 
-`JsonPatch` modifies an existing structure in place using declarative, path-based partial updates.
 
+`JsonPatch` is designed for **in-place partial updates** on existing structures.  
 Its operations and processing semantics follow RFC 6902 directly.
 If you are familiar with JSON Patch, you can use `JsonPatch` with the same mental model.
 
@@ -160,17 +160,13 @@ Additional behaviors:
 
 
 ## Why Patch in OBNT
-Because OBNT operates on plain Java objects:
+Unlike [Mapping](mapping), Patching is designed for **in-place partial updates** on existing structures.
 
-- Patch applies directly to real object graphs
-- No AST conversion layer is introduced
-- Works uniformly across `Map`, `List`, `POJO`, `JOJO`
-- Structural equality aligns with patch `test` semantics
-
-`JsonPatch` in SJF4J is not a wrapper around JSON text —
-it is a structural transformation mechanism for OBNT.
-
-
+Typical use cases:
+- Applying HTTP `PATCH` requests to partially update a resource
+- Incrementally updating state without reconstructing the entire object
+- Modifying deeply nested fields using precise path-based operations
+- Synchronizing changes (e.g. event-driven or diff-based updates)  
 
 
 

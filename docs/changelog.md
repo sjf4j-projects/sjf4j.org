@@ -1,8 +1,3 @@
----
-title: "SJF4J Changelog"
-description: "Track unreleased and published SJF4J changes, including new APIs, fixes, behavior changes, and performance-related updates."
----
-
 # Changelog
 
 All notable changes to **SJF4J (Simple JSON Facade for Java)** will be documented in this file.
@@ -13,16 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+
+
+## [1.1.6] - 2026.04.02
+### Added
 - Added `JsonPath.compileCached(String)` to provide an explicit cached compile path.
 - Added `PathCache` interface with built-in `ConcurrentHashMap` as default implementation.
+- Added `JsonPath.compute(...)` overloads to update every matched target from its current content.
+- Added `NodeConverter`, `NodeMapper`, and `NodeMapperBuilder` for path-driven object graph mapping.
 - Added `NamingStrategy` and `@NodeNaming` to map JSON property names like `snake_case` to Java fields without per-field annotations.
-- Added `JsonArray.of(...)` and `JsonObject.of(...)` for simpler literal-style container creation.
+
+### Improved
+- Improved node conversion extensibility so exact source/target converters can participate in nested POJO and collection binding flows.
 
 ### Changed
+- Changed `new JsonArray(...)`/`new JsonObject(...)` to `JsonArray.of(...)` and `JsonObject.of(...)` for simpler literal-style container creation.
 - Changed `SchemaValidator` to validate `@ValidJsonSchema` along class inheritance chains (parent and child annotations both applied).
 
 ### Fixed
 - Fixed inherited POJO field resolution when parent and child define the same key, ensuring child field metadata is preserved and parent metadata does not overwrite it.
+
+
 
 ## [1.1.5] - 2026.03.11
 ### Added
@@ -40,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed several semantic consistency issues across node/path/patch behavior.
 - Fixed edge-case conversion mismatches in POJO and dynamic-field binding flows.
+
 
 
 ## [1.1.4] - 2026.02.24

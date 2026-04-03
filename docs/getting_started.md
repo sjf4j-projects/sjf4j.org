@@ -1,8 +1,3 @@
----
-title: "Getting Started with SJF4J"
-description: "Install SJF4J, choose a JSON backend, and learn the core APIs for parsing, modeling, querying, patching, mapping, and validation in Java."
----
-
 # SJF4J — Simple JSON Facade for Java
 
 ![License](https://img.shields.io/github/license/sjf4j-projects/sjf4j)
@@ -21,13 +16,10 @@ including [Jackson 2.x](https://github.com/FasterXML/jackson-databind),
 Beyond JSON, it also supports YAML (via [SnakeYAML](https://github.com/snakeyaml/snakeyaml))
 and Java Properties (built-in).
 
-SJF4J provides **a unified JSON-semantic structural processing layer**,
-delivering consistent APIs for 
-**modeling** (OBNT), 
-**parsing** (JSON/YAML), 
-**navigation** (JSON Path), 
-**transformation** (JSON Patch), 
-and **validation** (JSON Schema) across data formats and native object graphs.
+SJF4J provides **a unified JSON-semantic structural processing layer**, 
+offering consistent APIs for **modeling** (OBNT), **parsing** (JSON/YAML), 
+**navigating** (JSON Path), **patching** (JSON Patch), **validating** (JSON Schema), 
+and **mapping** across data formats and native object graphs.
 
 ## Install
 SJF4J requires **JDK 8+** and has no external dependencies.
@@ -61,7 +53,7 @@ Format support is activated automatically when the corresponding libraries are p
 
 - **In-Memory Usage** (No External Data)  
   SJF4J can operate directly on in-memory object graphs through OBNT,
-  providing the same JSON-semantic APIs for navigation, transformation, and validation.
+  providing the same JSON-semantic APIs for navigating, patching, and validating.
 
 ## Quickstart
 
@@ -71,9 +63,8 @@ SJF4J is built around a single structural model: the **Object-Based Node Tree (O
 - All APIs operate directly on native Java objects.
 - All APIs follow -- or extend -- standard JSON semantics.
 
-The following example, while slightly more elaborate, 
-demonstrates the full lifecycle:
-> **Modeling → Parsing → Navigation → Transformation → Validation**
+The following example demonstrates a complete lifecycle for processing structured data:
+> **Modeling → Parsing → Navigating → Patching → Validating → Mapping**
 
 ### Modeling
 
@@ -120,11 +111,11 @@ student.getName();                  // Alice
 student.getInteger("age");          // 18
 ```
 
-Learn more → [Parsing (Codec)](https://sjf4j.org/docs/parsing)
+Learn more → [Parsing (JSON/YAML)](https://sjf4j.org/docs/parsing)
 
-### Navigation
+### Navigating
 
-Every OBNT node supports declarative structural navigation, expressive querying,
+Every OBNT node supports declarative structural navigating, expressive querying,
 and precise mutation via `JSON Path` (RFC 9535) or `JSON Pointer` (RFC 6901).
 ```java
 student.getIntegerByPath("$.scores.math");
@@ -137,9 +128,9 @@ student.ensurePutByPath("/friends/0/scores/music", 100);
 // Bill's scores becomes: {"math": 83, "music": 100}
 ```
 
-Learn more → [Navigation (JSON Path)](https://sjf4j.org/docs/navigation)
+Learn more → [Navigating (JSON Path)](https://sjf4j.org/docs/navigating)
 
-### Transformation
+### Patching
 
 Every OBNT node supports standard-compliant structural updates via `JSON Patch` (RFC 6902).
 ```java
@@ -159,11 +150,11 @@ student.getName();                              // "Alice Zhang"
 student.getIntegerByPath("$.scores.physics");   // 91
 ```
 
-Learn more → [Transformation (JSON Patch)](https://sjf4j.org/docs/transformation)
+Learn more → [Patching (JSON Patch)](https://sjf4j.org/docs/patching)
 
-### Validation
+### Validating
 
-Declare `JSON Schema` (Draft 2020-12) constraints with `@ValidJsonSchema` (like Jakarta/Bean Validation).
+Declare `JSON Schema` (Draft 2020-12) constraints with `@ValidJsonSchema` (like Jakarta Validation style).
 ```java
 @ValidJsonSchema("""
 {
@@ -203,14 +194,29 @@ SchemaValidator validator = new SchemaValidator();
 validator.validate(student).isValid();                  // true
 ```
 
-Learn more → [Validation (JSON Schema)](https://sjf4j.org/docs/validation)
+Learn more → [Validating (JSON Schema)](https://sjf4j.org/docs/validating)
 
----
-This simple example demonstrates how SJF4J unifies the entire lifecycle of structured data processing under a single JSON-semantic model.
+### Mapping
+
+While `JsonPatch` focuses on in-place partial modification,
+`NodeMapper` produces a new structure from the source object graph.
+```java
+NodeMapper<Student, StudentDto> mapper = NodeMapper
+    .builder(Student.class, StudentDto.class)
+    .copy("studentName", "name")
+    .ensureValue("$.info.school", "PKU")
+    .compute("/avgScore", root -> 
+            root.getScores().values().stream().mapToInt(i -> i).average().orElse(0))
+    .build();
+
+StudentDto studentDto = mapper.map(student);
+```
+
+Learn more → [Mapping (Transformation)](https://sjf4j.org/docs/mapping)
 
 
 ## Benchmarks
-SJF4J delivers **high performance** with minimal overhead while providing a unified JSON-semantic processing model.
+SJF4J delivers high performance with minimal overhead while providing a unified JSON-semantic processing model.
 
 **Reflection Access Benchmark**  
 Lambda-based accessor generation minimizes reflection overhead,
@@ -222,11 +228,11 @@ capabilities and flexible binding annotations.
 In most cases, the additional overhead remains modest compared to native
 JSON libraries.
 
-**JSON Path Navigation Benchmark**  
-SJF4J shows strong performance in `compile` and `query` workloads.  
+**JSON Path Navigating Benchmark**  
+SJF4J shows strong performance in `compile` and `query` workloads, while also providing `mutation` operations.  
 Within SJF4J, `Map/List` achieves the highest speed, with `JOJO` generally closer to `Map/List` than plain `POJO`.
 
-**JSON Schema Validation Benchmark**  
+**JSON Schema Validating Benchmark**  
 SJF4J fully supports JSON Schema Draft 2020-12 and consistently ranks
 among the top-performing Java implementations in
 [Bowtie](https://bowtie.report/#/implementations/java-sjf4j) benchmarks.
@@ -235,7 +241,6 @@ Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
 
 ## Contributing
 Given that JSON has evolved into a well-defined and widely adopted specification,
-SJF4J began as an exploration of what JSON-Oriented Development might look like in Java.
+SJF4J began as an exploration of *What JSON-Oriented development might look like in Java*.
 
-If you find the project interesting,
-contributions of all kinds — code, docs, bug reports, discussions, examples, or benchmarks — are welcome~!
+Contributions of code, docs, bug reports, examples, benchmarks, and careful feedback are all valuable.

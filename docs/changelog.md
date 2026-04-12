@@ -5,9 +5,46 @@ All notable changes to **SJF4J (Simple JSON Facade for Java)** will be documente
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
 ## [Unreleased]
+
+
+## [1.2.0] - 2026.04.12
+### Breaking Changes
+- `Sjf4j` is no longer a static facade. Migrate calls like `Sjf4j.fromJson(...)` to `Sjf4j.global().fromJson(...)` for process-wide defaults, or create an isolated instance with `new Sjf4j()` or `Sjf4j.builder().build()`.
+
 ### Added
+- Added Jackson 3 facade integration with runtime auto-detection, global config entry points, Jackson3 `JsonNode` support, and JDK 17 coverage/JMH evaluation.
+- Added container metadata and factory paths in `NodeRegistry` for concrete `Map`/`List`/`Set` target types.
+- Added `@NodeBinding` with type-level `naming` and `access = AccessStrategy.BEAN_BASED/FIELD_BASED` so POJO binding semantics are cached per type instead of driven by mutable global defaults.
+
+### Improved
+- Improved `Nodes.to(...)`, `NodeFacade.readNode(...)`, and streaming IO binding so concrete `Map`/`List`/`Set` targets are created with their declared container implementations when supported.
+- Improved `Nodes.copy(...)` and `deepNode(...)` to preserve concrete container types when possible and fall back to default mutable containers only on unsupported source implementations.
+- Improved streaming `AnyOf` binding by caching container element/value `AnyOf` metadata on `FieldInfo` and avoiding redundant runtime `TypeInfo` lookups on hot read paths.
+- Improved Gson facade integration by routing plugin-module reads and writes through shared `StreamingIO`, removing the separate Gson-exclusive streaming path, and aligning `hasAny` write performance with native Gson baselines.
+- Improved plain-POJO fallback rules so default binding stays bean-oriented, `@NodeProperty` is the only field-level force-bind signal, and record component accessors continue to work under `BEAN_BASED`.
+- Improved shared/Jackson/Gson/Fastjson2 streaming readers by separating raw node reads from typed dispatch, reducing duplicated `Object.class` hot-path work and closing the Fastjson2 JOJO gap against native any-setter baselines.
+- Improved JSONPath/JSON Pointer handling so numeric pointer tokens preserve object-key semantics, filter strings unescape consistently, regex flags parse more strictly, and `&&` / `||` short-circuit during filter evaluation.
+
+### Changed
+- Changed `@AnyOf.Scope.SELF` to `CURRENT` for discriminator lookup naming.
+- Changed `NodeRegistry` POJO routing flags from framework-centric reader/writer naming to `requiresPojoReader` / `requiresPojoWriter`, and removed `PojoInfo.newCreationSession()` in favor of direct `PojoCreationSession` construction.
+- Changed POJO metadata analysis to read naming and field-access strategy only from `@NodeBinding`; `@NodeNaming` has been removed.
+- Changed JSON Patch and RFC 7386 root-application APIs so `JsonPatch.apply(...)`, `PatchOperation.apply(...)`, `Patches.mergeRfc7386(...)`, and the `JsonContainer` wrappers return the possibly replaced root document.
+
+### Removed
+- Breaking: removed `Sjf4j.toPojo(...)` and `Sjf4j.mapperBuilder(...)` from the `Sjf4j` entry point; use `fromNode(...)` and `NodeMapperBuilder` directly instead.
+
+### Fixed
+- Fixed binding consistency for concrete container fields and root targets across shared and exclusive streaming backends.
+- Fixed transient-field precedence so transient members are always ignored first, and transient fields annotated with `@NodeProperty` now fail fast during metadata analysis.
+- Fixed backend contract drift in tests and plugin-module routing for plain POJOs, including Gson/Fastjson2 private-field behavior under `BEAN_BASED` and `FIELD_BASED`.
+- Fixed Jackson/Jackson3 module installation so existing mapper annotation introspectors remain active alongside SJF4J `@NodeProperty` support.
+- Fixed JSON Pointer parsing to reject invalid `~` escapes, preserve leading-zero numeric tokens, and route numeric pointer segments to object keys when the runtime container is object-shaped.
+- Fixed `stddev()` to return standard deviation instead of variance, and reject terminal descendant paths like `$..` during compile time.
+- Fixed JSON Patch / Merge Patch semantics for root replacement, `copy`/`move` of explicit `null`, deep-copy `copy`, atomic `move`, and numeric leaf equality during `diff`.
+- Fixed JSON Schema compilation and validation edge cases so unknown keywords and formats are tolerated per draft 2020-12, local schemas without root `$id` retain their retrieval URI base for relative `$ref`, `null` subschemas fail fast, string length uses Unicode code points, and strict format checks cover core hostname / IPv6 / URI-template / relative JSON Pointer cases.
+- Fixed JSON Schema resource URI bookkeeping by separating retrieval and canonical URIs during compile time, while keeping store registration keyed by canonical `$id`-resolved resource URIs.
 
 
 ## [1.1.6] - 2026.04.02

@@ -15,46 +15,62 @@ allowing data to move consistently between:
 
 ## Conversion APIs
 
+### Creating `Sjf4j`
+Multiple ways to obtain a `Sjf4j` instance:
+```java
+Sjf4j sjf4j = new Sjf4j();          // Default instance
+
+Sjf4j sjf4j2 = Sjf4j.builder()      
+        .jsonFacade(new Jackson3JsonFacade())
+        .build();                   // Custom configuration
+
+Sjf4j sjf4j3 = Sjf4j.global();      // Shared global instance
+```
+
+
 ### `fromJson()` / `toJson()`
 From JSON
 ```java
-Object node = Sjf4j.fromJson(json);
+Sjf4j sjf4j = new Sjf4j();
+// Create a reusable Sjf4j instance for data parsing operations
+
+Object node = sjf4j.fromJson(json);
 // Default: parsed into raw nodes (Map/List/String/Number/Boolean/null)
 
-JsonObject jo = Sjf4j.fromJson(json, JsonObject.class);
+JsonObject jo = sjf4j.fromJson(json, JsonObject.class);
 // Parsed as JsonObject, equivalent to `JsonObject.fromJson(json)`
 
-User user = Sjf4j.fromJson(json, User.class);
+User user = sjf4j.fromJson(json, User.class);
 // Parsed into POJO or JOJO
 
 Map<String, Object> map =
-        Sjf4j.fromJson(json, new TypeReference<Map<String, Object>>() {});
+        sjf4j.fromJson(json, new TypeReference<Map<String, Object>>() {});
 // Supports deep generics via TypeReference
 ```
 To JSON
 ```java
-String json = Sjf4j.toJsonString(node);
+String json = sjf4j.toJsonString(node);
 
-byte[] bytes = Sjf4j.toJsonBytes(node);
+byte[] bytes = sjf4j.toJsonBytes(node);
 
-Sjf4j.toJson(out, node);
+sjf4j.toJson(output, node);
 ```
 
 
 ### `fromYaml()` / `toYaml()`
 Semantically identical to JSON conversion.
 ```java
-Object node = Sjf4j.fromYaml(yaml);
+Object node = sjf4j.fromYaml(yaml);
 
-String yaml2 = Sjf4j.toYamlString(node);
+String yaml2 = sjf4j.toYamlString(node);
 ```
 
 ### `fromProperties()` / `toProperties()`
 Converts between hierarchical data and flat property structures.
 ```java
-Object node = Sjf4j.fromProperties(properties);
+Object node = sjf4j.fromProperties(properties);
 
-Properties properties2 = Sjf4j.toProperties(node);
+Properties properties2 = sjf4j.toProperties(node);
 // {"aa":{"bb":[{"cc":"dd"}]}} → aa.bb[0].cc=dd
 ```
 
@@ -62,10 +78,10 @@ Properties properties2 = Sjf4j.toProperties(node);
 - `fromNode()` converts one OBNT representation into another.
 - `deepNode()` performs a full deep copy.
 ```java
-User user = Sjf4j.fromNode(node, User.class);
+User user = sjf4j.fromNode(node, User.class);
 // Conversion between node types
 
-User user2 = Sjf4j.deepNode(user);
+User user2 = sjf4j.deepNode(user);
 // Produces a fully detached copy
 ```
 
@@ -106,8 +122,8 @@ public static class BigDay {
 
 The type can then be used directly without explicit registration:
 ```java
-BigDay day = Sjf4j.fromJson("\"2026-01-01\"", BigDay.class);
-assertEquals("\"2026-01-01\"", Sjf4j.toJson(day));
+BigDay day = Sjf4j.global().fromJson("\"2026-01-01\"", BigDay.class);
+assertEquals("\"2026-01-01\"", Sjf4j.global().toJson(day));
 ```
 
 **Or register a `ValueCodec`**  
@@ -161,7 +177,7 @@ class Animal {
 class Cat extends Animal { int lives; }
 class Dog extends Animal { int bark; }
 
-Animal a = Sjf4j.fromJson(
+Animal a = Sjf4j.global().fromJson(
     "{\"kind\":\"dog\",\"name\":\"Lucky\",\"bark\":3}",
     Animal.class
 );
@@ -185,7 +201,7 @@ class ParentZoo {
     Animal pet;
 }
 
-ParentZoo z = Sjf4j.fromJson(
+ParentZoo z = Sjf4j.global().fromJson(
     "{\"kind\":\"cat\",\"pet\":{\"name\":\"Mimi\",\"lives\":9}}",
     ParentZoo.class
 );
@@ -206,8 +222,8 @@ interface Poly {}
 class PolyObj extends JsonObject implements Poly {}
 class PolyArr extends JsonArray implements Poly {}
 
-Poly p1 = Sjf4j.fromJson("{\"a\":1}", Poly.class); // PolyObj
-Poly p2 = Sjf4j.fromJson("[1,2,3]", Poly.class);     // PolyArr
+Poly p1 = Sjf4j.global().fromJson("{\"a\":1}", Poly.class); // PolyObj
+Poly p2 = Sjf4j.global().fromJson("[1,2,3]", Poly.class);       // PolyArr
 ```
 
 #### Matching behavior
@@ -230,7 +246,7 @@ public class User extends JsonObject {
     private int loginCount;
 }
 
-User user = Sjf4j.fromJson(
+User user = Sjf4j.global().fromJson(
         """
         {"user_name":"han","login_count":2}
         """,

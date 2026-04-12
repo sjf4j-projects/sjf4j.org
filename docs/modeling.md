@@ -180,8 +180,8 @@ System.out.println(Nodes.inspect(node));
 
 **Copying** semantics are explicit.
 ```java
-Nodes.copy(node);               // shallow copy
-Sjf4j.deepNode(node);           // deep copy
+Nodes.copy(node);                         // shallow copy
+Sjf4j.global().deepNode(node);          // deep copy
 ```
 
 ### Use dynamic `JsonObject` 
@@ -277,7 +277,7 @@ String json = """
     "age": 18
 }
 """;
-User user = Sjf4j.fromJson(json, User.class);
+User user = Sjf4j.global().fromJson(json, User.class);
 ```
 
 **Access declared fields and dynamic properties** 
@@ -321,7 +321,6 @@ public class JsonPatch extends JsonArray {
     // ...
 }
 ```
-
 
 
 

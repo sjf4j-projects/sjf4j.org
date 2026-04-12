@@ -81,7 +81,7 @@ Output a patch:
 
 Apply it:
 ```java
-List<Integer> another = Sjf4j.deepNode(source);
+List<Integer> another = Sjf4j.global().deepNode(source);
 patch.apply(another);
 
 assertEquals(target, another);
@@ -167,7 +167,6 @@ Typical use cases:
 - Incrementally updating state without reconstructing the entire object
 - Modifying deeply nested fields using precise path-based operations
 - Synchronizing changes (e.g. event-driven or diff-based updates)  
-
 
 
 

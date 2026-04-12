@@ -65,7 +65,7 @@ Custom mapping is defined as an ordered set of actions.
 By default, `NodeMapper` performs implicit mapping:
 - Same-name fields are copied automatically
 - Nested objects are mapped recursively 
-- Equivalent to `Sjf4j.fromNode(..)`
+- Equivalent to `Sjf4j.global().fromNode(..)`
 
 ```java
 NodeMapper<User, UserDto> mapper = NodeMapper
@@ -202,4 +202,3 @@ Mapping in SJF4J fills the same gap for OBNT, useful for:
 - DTO projection
 - API shape conversion
 - Structural normalization between different object models
-

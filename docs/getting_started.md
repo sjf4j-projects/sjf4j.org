@@ -101,7 +101,7 @@ String json = """
 }
 """;
 
-Student student = new Sjf4j().fromJson(json, Student.class);
+Student student = Sjf4j.global().fromJson(json, Student.class);
 ```
 
 Now `student` exposes two complementary access models:

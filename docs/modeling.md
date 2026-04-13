@@ -111,20 +111,6 @@ each JSON type is mapped to its default raw node type:
 - `List<Object>` for JSON arrays
 - `String`, `Number`, `Boolean`, or `null` for JSON values
 
-### Why OBNT
-
-**1) One set of JSON-semantic APIs for every node**  
-SJF4J treats every node as a first-class citizen.  
-Traversal, query, patch, and validation can be applied uniformly,
-regardless of whether a node is a raw `Map/List`, a `JsonObject/JsonArray`, or a typed domain model.
-
-**2) Focus on business**  
-Model your domain in the most natural way for your business.  
-All nodes are plain Java objects—they can be stored,
-logged, passed through frameworks, and inspected with standard tools.   
-No custom AST or special infrastructure is required.
-
-
 ## Node Semantics
 All nodes in OBNT share a unified set of JSON-semantic APIs.  
 Basic operations are available through:
@@ -321,6 +307,20 @@ public class JsonPatch extends JsonArray {
     // ...
 }
 ```
+
+
+## Why OBNT
+
+**1) One set of JSON-semantic APIs for every node**  
+SJF4J treats every node as a first-class citizen.  
+Traversal, query, patch, and validation can be applied uniformly,
+regardless of whether a node is a raw `Map/List`, a `JsonObject/JsonArray`, or a typed domain model.
+
+**2) Focus on business**  
+Model your domain in the most natural way for your business.  
+All nodes are plain Java objects—they can be stored,
+logged, passed through frameworks, and inspected with standard tools.   
+No custom AST or special infrastructure is required.
 
 
 

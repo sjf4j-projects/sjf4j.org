@@ -55,4 +55,11 @@ onUnmounted(() => {
 .mermaid-fallback {
   margin: 0;
 }
+
+:deep(.nodeLabel p),
+:deep(.edgeLabel p),
+:deep(.cluster-label span p) {
+  margin: 0;
+  line-height: 1.3;
+}
 </style>

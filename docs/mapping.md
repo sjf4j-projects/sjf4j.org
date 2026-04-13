@@ -77,7 +77,7 @@ This means the builder only needs to declare the differences.
 
 ### Copy Mapping
 
-Use `copy(targetPath, sourcePath)` to copy values.
+Use `copy(targetPath, sourcePath)` and `ensureCopy()` to copy values.
 ```java
 .copy("displayName", "name")
 .copy("city", "/profile/city")
@@ -90,7 +90,7 @@ Both `targetPath` and `sourcePath`:
 
 ### Value Mapping
 
-Use `value(targetPath, value)` to assign a constant value to one single target location.
+Use `value(targetPath, value)` and `ensureValue()` to assign a constant value to one single target location.
 ```java
 .value("status", "ACTIVE")
 .value("/meta/badboy", false)
@@ -99,7 +99,7 @@ Use `value(targetPath, value)` to assign a constant value to one single target l
 
 ### Compute Mapping
 
-Use `compute(targetPath, ...)` to compute target values dynamically.
+Use `compute(multiPath, ...)` and `ensureCompute(targetPath, ...)` to compute target values dynamically.
 ```java
 .compute("level", root -> {
     String level = root.getStringByPath("$.profile.level");
@@ -107,6 +107,7 @@ Use `compute(targetPath, ...)` to compute target values dynamically.
 })
 ```
 
+`compute` supports multiple matches — the function will be invoked once for each matched target location.  
 Example with matched target context:
 ```java
 .compute("$.friends[*].grade", (root, parent, current) -> {
@@ -116,7 +117,7 @@ Example with matched target context:
 ```
 
 Parameters:
-- `targetPath` — may resolve to multiple values
+- `multiPath` — may resolve to multiple values
 - `root` — source root
 - `parent` — the parent container of the matched target location
 - `current` — the matched target value

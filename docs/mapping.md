@@ -111,7 +111,7 @@ Use `compute(multiPath, ...)` and `ensureCompute(targetPath, ...)` to compute ta
 Example with matched target context:
 ```java
 .compute("$.friends[*].grade", (root, parent, current) -> {
-    Integer score = Nodes.toInt(Nodes.getInObject(parent, "score"));
+    Integer score = Nodes.getInObject(parent, "score", Integer.class);
     return score != null && score >= 90 ? "A" : "B";
 })
 ```

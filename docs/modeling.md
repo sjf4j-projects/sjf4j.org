@@ -139,7 +139,7 @@ Nodes provide container-level operations for objects:
 Nodes.sizeInObject(node);
 Nodes.containsInObject(node, "name");
 Nodes.getInObject(node, "name");
-Nodes.visitObject(node, (k, v) -> {...});
+Nodes.forEachObject(node, (k, v) -> {...});
 ```
 Equivalent APIs exist for arrays.
 

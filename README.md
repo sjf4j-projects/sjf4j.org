@@ -54,7 +54,7 @@ All documentation lives in Markdown files:
 
 ## Adding a New Page
 
-Only two steps are needed — create the Markdown file and register it in the sidebar.
+At minimum, adding a new page requires two steps — create the Markdown file and register it in the sidebar.
 
 ### Step 1 — Create the Markdown file
 
@@ -120,7 +120,7 @@ git commit -m "docs: add new-feature page"
 git push
 ```
 
-GitHub Actions (`.github/workflows/deploy.yml`) will automatically build the VitePress site and deploy it to GitHub Pages. No manual build or upload is needed.
+For maintainers of this repository, pushing to the configured deploy branch triggers GitHub Actions (`.github/workflows/deploy.yml`) to build the VitePress site and deploy it to GitHub Pages automatically. If you are working from a fork or a feature branch, preview locally or open a PR instead.
 
 ### Summary
 

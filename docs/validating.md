@@ -60,16 +60,18 @@ assertFalse(schema.isValid(pojo));                  // Validate on POJO
 Common `JsonSchema` entry points:
 
 ```java
-ValidationResult validate(Object node)
-ValidationResult validateFailFast(Object node)
-boolean isValid(Object node)
-void requireValid(Object node)
-```
+ValidationResult validate(Object node);
+// returns a full `ValidationResult`
 
-- `validate(node)` returns a full `ValidationResult`
-- `validateFailFast(node)` returns as soon as the first validation error is found
-- `isValid(node)` is a convenience boolean check with fail-fast semantics
-- `requireValid(node)` throws if the value is invalid
+ValidationResult validateFailFast(Object node);
+// returns as soon as the first validation error is found
+
+boolean isValid(Object node);
+// is a convenience boolean check with fail-fast semantics
+
+void requireValid(Object node);
+// throws ValidationException if the value is invalid
+```
 
 
 ## Declaring via `@ValidJsonSchema`
@@ -107,18 +109,6 @@ if (!result.isValid()) {
 
 ### Schema References
 
-Using references via `ref`
-```java
-@ValidJsonSchema(ref = "domain.schema.json#User")            // $anchor
-public class UserDto { ... }
-
-@ValidJsonSchema(ref = "domain.schema.json#/$defs/User")     // JSON Pointer
-public class UserDto2 { ... }
-
-@ValidJsonSchema                                             // Convention-based lookup
-public class UserDto3 { ... }
-```
-
 The default schema base path is 
 ```
 classpath:///json-schemas/
@@ -128,6 +118,20 @@ It can be configured if necessary:
 SchemaValidator validator = new SchemaValidator("file:///tmp/json-schemas/");
 ```
 
+Using references via `ref`
+```java
+@ValidJsonSchema(ref = "domain.schema.json#User")            // $anchor: User
+public class UserDto { ... }
+
+@ValidJsonSchema(ref = "domain.schema.json#/$defs/User")     // JSON Pointer inside the same file
+public class UserDto2 { ... }
+
+@ValidJsonSchema                                             // Convention-based lookup
+public class UserDto3 { ... }
+```
+
+- `domain.schema.json#User` resolves to the `$anchor` named `User` in `classpath:///json-schemas/domain.schema.json`
+- `domain.schema.json#/$defs/User` resolves to the JSON Pointer location in the same file
 
 
 **Convention-Based Resolution**

@@ -22,7 +22,7 @@ offering consistent APIs for **modeling** (OBNT), **parsing** (JSON/YAML),
 and **mapping** across data formats and native object graphs.
 
 ## Install
-SJF4J requires **JDK 8+** and has no external dependencies.
+SJF4J requires **JDK 8+**. The core library has no external dependencies beyond the data parser/backend you choose to use.
 
 Gradle
 ```groovy
@@ -38,7 +38,7 @@ Maven
 ```
 
 **Optional Runtime Backends**  
-SJF4J itself has no external runtime dependencies.  
+SJF4J itself adds no extra runtime dependencies beyond format parsers/backends.  
 Format support is activated automatically when the corresponding libraries are present.
 
 - **JSON**

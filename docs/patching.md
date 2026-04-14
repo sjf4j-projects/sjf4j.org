@@ -1,4 +1,4 @@
-**---
+---
 title: "Java JSON Patch, Merge Patch, and Partial Updates"
 description: "Apply RFC 6902 JSON Patch and RFC 7386 JSON Merge Patch to existing Java object graphs, including JsonObject, JsonArray, Map, List, POJO, and JOJO nodes."
 ---
@@ -167,7 +167,6 @@ Typical use cases:
 - Incrementally updating state without reconstructing the entire object
 - Modifying deeply nested fields using precise path-based operations
 - Synchronizing changes (e.g. event-driven or diff-based updates)  
-
 
 
 

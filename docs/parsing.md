@@ -158,7 +158,7 @@ NodeRegistry.registerValueCodec(new ValueCodec<LocalDate, String>() {
 
 It supports three practical patterns:
 
-1. Discriminator on the same object (`scope = SELF`, default)
+1. Discriminator on the same object (`scope = CURRENT`, default)
 2. Discriminator from parent object (`scope = PARENT`)
 3. Fallback by JSON runtime shape (object/array), when no discriminator is provided
 
@@ -229,18 +229,18 @@ Poly p2 = Sjf4j.global().fromJson("[1,2,3]", Poly.class);       // PolyArr
 #### Matching behavior
 
 - `key`: discriminator field name
-- `path`: discriminator JSONPath expression (supported in `Scope.SELF`), evaluated only when `key` is not provided
+- `path`: discriminator JSONPath expression (supported in `Scope.CURRENT`), evaluated only when `key` is not provided
 - `when`: accepted discriminator values for one mapping; runtime discriminator values are matched after string conversion
-- `scope`: where to resolve discriminator (`SELF` or `PARENT`)
+- `scope`: where to resolve discriminator (`CURRENT` or `PARENT`)
 - `onNoMatch`: behavior when no mapping matches (`FAIL` by default, or `FAILBACK_NULL`)
 
-### Using `@NodeNaming`
+### Using `@NodeBinding`
 
-`@NodeNaming` defines the JSON-facing naming strategy for a` POJO` or `JOJO`.
-It is applied when SJF4J derives property names from Java member names.
+`@NodeBinding` defines JSON-facing binding behavior for a `POJO` or `JOJO`.
+Its `naming` option is applied when SJF4J derives property names from Java member names.
 
 ```java
-@NodeNaming(NamingStrategy.SNAKE_CASE)
+@NodeBinding(naming = NamingStrategy.SNAKE_CASE)
 public class User extends JsonObject {
     private String userName;
     private int loginCount;
@@ -264,7 +264,7 @@ Built-in strategies:
 
 **Precedence (high → low)**:
 - `@NodeProperty` on field or constructor parameter
-- `@NodeNaming` on the type
+- `@NodeBinding(naming = ...)` on the type
 - global `Sjf4jConfig.Builder.namingStrategy(...)`
 
 Notes:

@@ -13,7 +13,9 @@ SJF4J provides a unified, JSON-semantic path engine that works on all OBNT nodes
 
 
 ### Use `JsonPath`
-`JsonPath` represents a compiled, reusable path expression.
+`JsonPath` represents a compiled, reusable path expression.  
+`JsonPath.compile(...)` accepts both JSON Path expressions such as `$.user.role`
+and JSON Pointer expressions such as `/user/role`; the syntax is detected automatically.
 
 ```java
 JsonPath path = JsonPath.compile("$.user.role");

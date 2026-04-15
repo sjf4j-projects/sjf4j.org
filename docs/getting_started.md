@@ -22,7 +22,7 @@ offering consistent APIs for **modeling** (OBNT), **parsing** (JSON/YAML),
 and **mapping** across data formats and native object graphs.
 
 ## Install
-SJF4J requires **JDK 8+**. The core library has no external dependencies beyond the data parser/backend you choose to use.
+SJF4J requires **JDK 8+** and has no external dependencies (except for the chosen data parser/backend).
 
 Gradle
 ```groovy
@@ -38,11 +38,11 @@ Maven
 ```
 
 **Optional Runtime Backends**  
-SJF4J itself adds no extra runtime dependencies beyond format parsers/backends.  
+SJF4J itself has no external runtime dependencies.  
 Format support is activated automatically when the corresponding libraries are present.
 
 - **JSON**
-  - Include one of: `Jackson 3.x`, `Jackson 2.x`, `Gson`, `Fastjson2`, or `JSON-P` (with `Parsson` or other).  
+  - Include one of: `Jackson 3.x`, `Jackson 2.x`, `Gson`, `Fastjson2`, or `JSON-P` (with `Parsson` or others).  
   - By default, SJF4J automatically detects and uses the first available implementation in that order.
   - If none are detected, it falls back to a built-in simple JSON parser (functional but slower).
 
@@ -110,7 +110,7 @@ Now `student` exposes two complementary access models:
 
 ```java
 student.getName();                  // Alice
-student.getInteger("age");          // 18
+student.getInt("age");              // 18
 ```
 
 Learn more → [Parsing (JSON/YAML)](https://sjf4j.org/docs/parsing)
@@ -120,7 +120,7 @@ Learn more → [Parsing (JSON/YAML)](https://sjf4j.org/docs/parsing)
 Every OBNT node supports declarative structural navigating, expressive querying,
 and precise mutation via `JSON Path` (RFC 9535) or `JSON Pointer` (RFC 6901).
 ```java
-student.getIntegerByPath("$.scores.math");
+student.getIntByPath("$.scores.math");
 // 59
 
 student.findByPath("$..friends[?@.scores.math >= 90].name", String.class);  
@@ -149,7 +149,7 @@ patch.apply(student);
 The changes are applied in-place:
 ```java
 student.getName();                              // "Alice Zhang"
-student.getIntegerByPath("$.scores.physics");   // 91
+student.getIntByPath("$.scores.physics");       // 91
 ```
 
 Learn more → [Patching (JSON Patch)](https://sjf4j.org/docs/patching)

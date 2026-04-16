@@ -118,27 +118,22 @@ It can be configured if necessary:
 SchemaValidator validator = new SchemaValidator("file:///tmp/json-schemas/");
 ```
 
-Using references via `ref`
+Using references via `ref`:
 ```java
-@ValidJsonSchema(ref = "domain.schema.json#User")            // $anchor: User
+@ValidJsonSchema(ref = "user_dto.json")                 // specify a schema file
 public class UserDto { ... }
 
-@ValidJsonSchema(ref = "domain.schema.json#/$defs/User")     // JSON Pointer inside the same file
+@ValidJsonSchema(ref = "others.json#/$defs/user")       // anchor or JSON Pointer may be used
 public class UserDto2 { ... }
 
-@ValidJsonSchema                                             // Convention-based lookup
+@ValidJsonSchema                                        // convention-based lookup
 public class UserDto3 { ... }
 ```
 
-- `domain.schema.json#User` resolves to the `$anchor` named `User` in `classpath:///json-schemas/domain.schema.json`
-- `domain.schema.json#/$defs/User` resolves to the JSON Pointer location in the same file
-
-
-**Convention-Based Resolution**
-
-If neither `value` nor `ref` is specified:
-- find `<fully.qualified.ClassName>.schema.json`
-- find `<SimpleName>.schema.json`
+Convention-Based Resolution  
+- If neither `value` nor `ref` is specified:
+- find `<simple-name>.json`, e.g. `UserDto3.json`
+- find `<snake-name>.json`, e.g. `user_dto3.json`
 
 Supported schemes:
 - `classpath:///`

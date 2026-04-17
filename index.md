@@ -12,12 +12,15 @@ hero:
     - theme: alt
       text: "⚡ Benchmarks"
       link: /docs/benchmarks
+    - theme: alt
+      text: "🚧 Generate Java from JSON Schema"
+      link: /generator
 ---
 
 <div class="vp-doc" style="max-width: 1120px; margin: 0 auto; padding: 0.1rem 1.5rem 2rem;">
 
 ## Quick Install
-SJF4J requires `JDK 8` and has no external dependencies.
+SJF4J requires `JDK 8+` and has no external dependencies (except for the chosen data parser).
 
 <MavenInstallSnippet />
 

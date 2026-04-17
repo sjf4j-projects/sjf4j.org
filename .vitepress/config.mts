@@ -269,6 +269,7 @@ export default withMermaid(defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Docs', link: '/docs/getting_started' },
+      { text: 'Generator', link: '/generator' },
       { text: 'GitHub', link: 'https://github.com/sjf4j-projects/sjf4j' },
     ],
 

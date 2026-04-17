@@ -3,6 +3,7 @@ import { h } from 'vue'
 import type { Theme } from 'vitepress'
 import MavenInstallSnippet from './components/MavenInstallSnippet.vue'
 import MermaidRuntime from './components/MermaidRuntime.vue'
+import SchemaToJavaPlayground from './components/SchemaToJavaPlayground.vue'
 import './custom.css'
 
 const theme: Theme = {
@@ -10,6 +11,7 @@ const theme: Theme = {
   enhanceApp({ app }) {
     app.component('MavenInstallSnippet', MavenInstallSnippet)
     app.component('Mermaid', MermaidRuntime)
+    app.component('SchemaToJavaPlayground', SchemaToJavaPlayground)
   },
   Layout: () =>
     h(DefaultTheme.Layout, null, {

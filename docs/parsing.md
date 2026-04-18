@@ -236,8 +236,16 @@ Poly p2 = Sjf4j.global().fromJson("[1,2,3]", Poly.class);       // PolyArr
 
 ### Using `@NodeBinding`
 
-`@NodeBinding` defines JSON-facing binding behavior for a `POJO` or `JOJO`.
-Its `naming` option is applied when SJF4J derives property names from Java member names.
+`@NodeBinding` configures type-level binding behavior for a `POJO` or `JOJO`.  
+It currently supports: `naming`, `access`, `readDynamic` and `writeDynamic`.
+
+#### `naming` (`NamingStrategy`)
+
+Controls how Java member names are mapped to JSON property names.
+Supported strategies:
+- `IDENTITY` (default): use the Java member name as-is
+- `SNAKE_CASE`: convert camelCase names to snake_case
+
 
 ```java
 @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
@@ -259,24 +267,80 @@ assertEquals("han", user.getString("user_name"));
 assertNull(user.getString("userName"));
 ```
 
-Built-in strategies:
-- `NamingStrategy.SNAKE_CASE`
-
-**Precedence (high → low)**:
+Naming precedence (high → low):
 - `@NodeProperty` on field or constructor parameter
 - `@NodeBinding(naming = ...)` on the type
-- global `Sjf4jConfig.Builder.namingStrategy(...)`
+- identity naming (`userName` → `userName`)
 
-Notes:
-- Overrides the global naming strategy for the annotated type
-- Applies to both read and write
+#### `access` (`AccessStrategy`)
+
+- `BEAN_BASED` (default): 
+  - public fields bind directly; 
+  - non-public members bind through bean getters/setters or other explicit binding metadata
+- `FIELD_BASED`: 
+  - non-public fields may also bind directly
+
+Use `FIELD_BASED` when a `POJO` should bind non-public fields directly rather than through bean accessors only.
+```java
+@NodeBinding(access = AccessStrategy.FIELD_BASED)
+class User {
+    String userName;
+    int loginCount;
+}
+
+User user = Sjf4j.global().fromJson(
+        """
+        {"userName":"han","loginCount":2}
+        """,
+        User.class
+);
+```
+
+#### `readDynamic` / `writeDynamic`
+
+These options apply to `JOJO`.
+```java
+@NodeBinding(readDynamic = false)
+class ReadDisabledBook extends JsonObject {
+    public int id;
+    public String name;
+}
+
+@NodeBinding(writeDynamic = false)
+class WriteDisabledBook extends JsonObject {
+    public int id;
+    public String name;
+}
+
+ReadDisabledBook readBook = Sjf4j.global().fromJson(
+        """
+        {"id":1,"name":"a","extra":2}
+        """,
+        ReadDisabledBook.class
+);
+assertNull(readBook.get("extra"));
+
+WriteDisabledBook writeBook = Sjf4j.global().fromJson(
+        """
+        {"id":1,"name":"a","extra":2}
+        """,
+        WriteDisabledBook.class
+);
+assertEquals(2, writeBook.getInt("extra"));
+assertEquals("{\"id\":1,\"name\":\"a\"}", Sjf4j.global().toJsonString(writeBook));
+```
+
+- `readDynamic = true` (default): retain unknown JSON properties as dynamic JOJO properties during reading
+- `readDynamic = false`: ignore unknown JSON properties unless they bind to declared fields or properties
+- `writeDynamic = true` (default): write dynamic JOJO properties together with declared fields or properties
+- `writeDynamic = false`: write only declared fields or properties
+
 
 ## Performance
 
-SJF4J adds structural semantics on top of underlying codecs, so parsing cost depends on both the backend and the target model.
+SJF4J adds structural semantics on top of underlying codecs, so runtime cost depends on both the selected backend and the target model.
 
-- In most cases, SJF4J is near native performance in the benchmark suite.
-- `PLUGIN_MODULE` is typically the best default when the backend supports it.
-- `JOJO` usually keeps a better performance profile than plain `POJO` while preserving typed models.
+- In most benchmark scenarios, SJF4J performs close to native backend levels.
+- `JOJO` usually keeps a POJO-like performance profile while adding open-model flexibility.
 
-See [Benchmarks](./benchmarks#json-parsing-benchmark) for parsing results and backend-specific notes.
+See [Benchmarks](./benchmarks#json-parsing-benchmark) for measured results and backend-specific notes.

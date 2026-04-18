@@ -311,6 +311,8 @@ List<String> allFriends = user.findByPath("$.friends..name", String.class);
 // ["Bill", "Cindy", "David"] -- all friends and friends of friends.
 ```
 
+
+
 ### With JAJO
 JAJO is the array counterpart of JOJO, but not allowing additional fields.  
 The purpose of JAJO is *modeling rather than structure*. 
@@ -325,81 +327,63 @@ public class JsonPatch extends JsonArray {
 
 ## How to Choose?
 
+SJF4J gives you more choices.  
+That flexibility is powerful, but it also means there are more modeling decisions to make.
 
 ### POJO or JOJO
 
 Use this rule first:
-
 - **POJO = closed model**
 - **JOJO = open model**
 
-Choose `POJO` when the object is mainly a **Java domain model**. Choose `JOJO` when the object is mainly a **JSON-facing model** that must keep both typed members and undeclared JSON properties.
+Choose `POJO` when the object is mainly a **Java domain model**.  
+Choose `JOJO` when the object sits at a JSON or data boundary and needs both typed members and undeclared properties, 
+such as API payloads, config objects, integration models, or SQL result bindings.
 
-| Prefer | When |
-|---|---|
-| `POJO` | The schema is stable, undeclared fields are not important, and the object mainly serves business logic. |
-| `JOJO` | Some members should be strongly typed, but undeclared JSON properties must still be preserved and processed. |
-| `JsonObject` / `Map/List` | The payload is mostly dynamic and you do not need a stable typed model. |
+> `JOJO` has the same core binding model and practical performance profile as `POJO`, so choosing `JOJO` does **not** mean paying an extra abstraction cost in normal use.
 
-`JOJO` is not simply a "better POJO". It is a different modeling choice for objects that need both typed structure and JSON-style extensibility.
+
+| Prefer               | When                                                                 |
+|----------------------|----------------------------------------------------------------------|
+| `POJO`               | Stable schema, fixed structure, mainly business/domain logic.         |
+| `JOJO`               | Typed structure plus unknown / extensible JSON members.              |
+| `JsonObject` / `Map` | Mostly dynamic payloads with little need for a typed Java model.     |
+
+`JOJO` is not simply a "better POJO". It is a different modeling choice.
 
 **Recommended default**
-
 - **Domain core** → prefer `POJO`
-- **API / config / integration boundary** → prefer `JOJO`
-- **Mostly dynamic payloads** → prefer `JsonObject` or raw `Map/List`
+- **External boundary (API / config / integration / SQL result)** → prefer `JOJO`
+- **Mostly dynamic payloads** → prefer `JsonObject` or `Map`
+- **Unsure / evolving schema** → start with `JOJO`
 
 ### Field or Property
 
-Once you choose `JOJO`, the next question is usually: **which members should become declared fields?**
+For `JOJO`, think in two layers:
+- **Declared fields = stable contract**
+- **Dynamic properties = flexible edges**
 
-Think of a JOJO as a combination of:
 
-- a **stable typed backbone** expressed as declared fields
-- **flexible dynamic edges** retained as JSON properties
+| Use Field                 | Use Dynamic Property            |
+|---------------------------|---------------------------------|
+| important business data   | passthrough / extension data    |
+| frequently accessed       | rare or optional data           |
+| needs typing / validation | fast-changing shape             |
+| reused in business logic  | third-party integration details |
 
-| Use a declared field when... | Keep it as a dynamic property when... |
-|---|---|
-| it has clear business meaning | it is passthrough or extension data |
-| it is accessed frequently | it evolves quickly |
-| it needs strong typing | it is sparse or rarely accessed |
-| it is validated or mutated often | it belongs to third-party integration details |
-| it forms a stable nested object/array boundary | you are not ready to make a long-term naming/type/shape commitment |
+**Simple rule:**  
+If you keep using the same path in code, promote it to a field or accessor.  
+For nested JSON, model stable subtrees as nested `JOJO` / `JAJO`.
 
-For deeply nested JSON, prefer modeling **stable subtrees** as nested `JOJO` / `JAJO` fields instead of exposing many repeated path-based getters and setters.
+### Schema to Model
 
-Use path access mainly for:
+JSON Schema helps describe structure, but structure alone does not define a good Java model.
 
-- ad-hoc navigation
-- occasional queries
-- exploratory or convenience access
+The real question is not:
+- Should every schema member become a field?
 
-If the same deep path appears repeatedly in business logic, it is usually a sign that the subtree or value should be promoted into a declared field or a dedicated accessor.
+The real question is:
+- What should become part of the stable Java API?
 
-In practice, declaring a JOJO field means: **"this name, type, and location are part of the stable model."** If you are not ready to make that commitment, keeping it dynamic is usually the better choice.
-
-### Schema First
-
-Generating Java from JSON Schema can help a lot, but the main challenge is usually **modeling**, not code generation.
-
-Schema can tell you what structure exists. It cannot fully tell you which parts deserve long-term semantic commitment in Java.
-
-That is why the design question is not only:
-
-- should this schema member become a Java field?
-
-but also:
-
-- should it become part of the stable Java access contract at all?
-- should it be represented by a field, a dynamic property, a nested model, or a path-backed accessor?
-
-A useful generator should therefore be free to generate a stable Java access layer while choosing different implementations for different members. In many cases, the best generated API is not "every schema node becomes a field", but rather:
-
-- stable structure becomes explicit
-- stable subtrees become nested models
-- convenience accessors may use paths when appropriate
-- volatile edges remain dynamic
-
-In short: **code generation is not the hard part; thinking clearly about the model is.**
-
+[Generating Java from JSON Schema](https://sjf4j.org/generator) is easy now. **Designing boundaries is the hard part.**
 

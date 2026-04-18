@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 
 type ValidationNamespace = 'jakarta' | 'javax'
 type AccessorMode = 'lombok' | 'methods' | 'none'
+type FieldMemberKind = 'field' | 'property'
 
 type GeneratorOptions = {
   packageName: string
@@ -29,7 +30,7 @@ const exampleSchema = `{
   "title": "Order",
   "description": "Checkout order created by the storefront.",
   "type": "object",
-  "required": ["id", "amount", "createdAt"],
+  "required": ["id", "amount", "createdAt", "customer", "items"],
   "properties": {
     "id": {
       "type": "string",
@@ -52,6 +53,66 @@ const exampleSchema = `{
         "type": "string"
       }
     },
+    "customer": {
+      "type": "object",
+      "required": ["id", "profile"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "profile": {
+          "type": "object",
+          "required": ["email"],
+          "properties": {
+            "email": {
+              "type": "string"
+            },
+            "loyaltyTier": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "shipping": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string"
+            },
+            "country": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["sku", "quantity"],
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "pricing": {
+            "type": "object",
+            "properties": {
+              "unitPrice": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
     "metadata": {
       "type": "object",
       "description": "Opaque integration-specific values."
@@ -72,6 +133,7 @@ const options = ref<GeneratorOptions>({
 const toastMessage = ref('')
 const copyButtonLabel = ref('Copy')
 const inputHighlightRef = ref<HTMLElement | null>(null)
+const fieldOverrides = ref<Record<string, { memberKind: FieldMemberKind; generateAccessors: boolean }>>({})
 
 function showToast(message: string) {
   toastMessage.value = message
@@ -190,6 +252,56 @@ function mapSchemaType(node: SchemaNode | undefined, useBigDecimal: boolean): { 
     default:
       return { typeName: 'Object', imports: [] }
   }
+}
+
+function schemaTypeLabel(node: SchemaNode | undefined): string {
+  const declared = Array.isArray(node?.type)
+    ? node.type.filter((entry) => entry !== 'null').join(' | ')
+    : node?.type || 'unknown'
+
+  if (declared === 'string' && node?.format) {
+    return `${declared} (${node.format})`
+  }
+
+  return declared
+}
+
+function collectSchemaFields(
+  node: SchemaNode | undefined,
+  useBigDecimal: boolean,
+  path = '',
+  required = false,
+): Array<{ path: string; javaType: string; schemaType: string; required: boolean }> {
+  if (!node) {
+    return []
+  }
+
+  const typeLabel = schemaTypeLabel(node)
+  const mapped = mapSchemaType(node, useBigDecimal)
+  const fields = [{ path, javaType: mapped.typeName, schemaType: typeLabel, required }]
+
+  const declared = Array.isArray(node.type)
+    ? node.type.find((entry) => entry !== 'null')
+    : node.type
+
+  if (declared === 'object' && node.properties) {
+    const requiredSet = new Set(node.required || [])
+    return [
+      ...fields,
+      ...Object.entries(node.properties).flatMap(([name, child]) =>
+        collectSchemaFields(child, useBigDecimal, `${path}/${name}`, requiredSet.has(name)),
+      ),
+    ]
+  }
+
+  if (declared === 'array' && node.items) {
+    return [
+      ...fields,
+      ...collectSchemaFields(node.items, useBigDecimal, `${path}/0`, false),
+    ]
+  }
+
+  return fields
 }
 
 function renderJava(schema: SchemaNode, generatorOptions: GeneratorOptions): string {
@@ -314,6 +426,30 @@ const outputStats = computed(() => {
 
 const outputHeaderMeta = computed(() => `${resolvedClassName.value}.java · ${outputStats.value}`)
 
+const parsedFieldList = computed(() => {
+  if (typeof parsedSchema.value === 'string') {
+    return []
+  }
+
+  return collectSchemaFields(parsedSchema.value, options.value.useBigDecimal)
+    .filter((field) => field.path !== '')
+    .map((field) => {
+    const override = fieldOverrides.value[field.path] || {
+      memberKind: 'field' as FieldMemberKind,
+      generateAccessors: false,
+    }
+
+    return {
+      path: field.path,
+      javaType: field.javaType,
+      schemaType: field.schemaType,
+      required: field.required,
+      memberKind: override.memberKind,
+      generateAccessors: override.generateAccessors,
+    }
+  })
+})
+
 const highlightedInput = computed(() => highlightJson(schemaInput.value))
 const highlightedOutput = computed(() => highlightJava(generatedOutput.value.code))
 
@@ -325,6 +461,34 @@ function syncInputHighlight(event: Event) {
 
   inputHighlightRef.value.scrollTop = target.scrollTop
   inputHighlightRef.value.scrollLeft = target.scrollLeft
+}
+
+function updateFieldMemberKind(name: string, memberKind: FieldMemberKind) {
+  fieldOverrides.value = {
+    ...fieldOverrides.value,
+    [name]: {
+      memberKind,
+      generateAccessors: fieldOverrides.value[name]?.generateAccessors || false,
+    },
+  }
+}
+
+function updateFieldAccessors(name: string, generateAccessors: boolean) {
+  fieldOverrides.value = {
+    ...fieldOverrides.value,
+    [name]: {
+      memberKind: fieldOverrides.value[name]?.memberKind || 'field',
+      generateAccessors,
+    },
+  }
+}
+
+function handleFieldMemberKindChange(name: string, event: Event) {
+  updateFieldMemberKind(name, (event.target as HTMLSelectElement).value as FieldMemberKind)
+}
+
+function handleFieldAccessorChange(name: string, event: Event) {
+  updateFieldAccessors(name, (event.target as HTMLInputElement).checked)
 }
 
 function loadExample() {
@@ -351,6 +515,7 @@ function resetOptions() {
     useBigDecimal: true,
     addJavaDoc: true,
   }
+  fieldOverrides.value = {}
   showToast('Generator options reset.')
 }
 
@@ -480,6 +645,49 @@ function downloadOutput() {
         </div>
       </section>
 
+      <section class="generator-card generator-workspace-card generator-fields-card">
+        <div class="generator-card-header">
+          <div>
+            <p class="generator-card-kicker">Fields</p>
+          </div>
+          <span class="generator-meta">{{ parsedFieldList.length }} fields</span>
+        </div>
+
+        <div v-if="generatedOutput.error" class="generator-error generator-fields-empty">
+          <strong>Invalid schema</strong>
+          <p>Fix the JSON input to preview parsed fields.</p>
+        </div>
+
+        <div v-else-if="parsedFieldList.length === 0" class="generator-fields-empty">
+          <strong>No fields found</strong>
+          <p>Add object properties to the schema to inspect field-level generation options.</p>
+        </div>
+
+        <div v-else class="generator-fields-list">
+          <article v-for="field in parsedFieldList" :key="field.name" class="generator-field-card">
+            <div class="generator-field-card-header">
+            <strong>{{ field.path }}</strong>
+              <span v-if="field.required" class="generator-required-badge">required</span>
+            </div>
+
+            <p class="generator-field-card-type">{{ field.schemaType }} → {{ field.javaType }}</p>
+
+            <label class="generator-field-card-control">
+              <span>Member</span>
+              <select :value="field.memberKind" @change="handleFieldMemberKindChange(field.path, $event)">
+                <option value="field">Field</option>
+                <option value="property">Property</option>
+              </select>
+            </label>
+
+            <label class="generator-field-card-toggle">
+              <input :checked="field.generateAccessors" type="checkbox" @change="handleFieldAccessorChange(field.path, $event)" />
+              <span>Generate getter/setter</span>
+            </label>
+          </article>
+        </div>
+      </section>
+
       <section class="generator-card generator-workspace-card">
         <div class="generator-card-header">
           <div>
@@ -575,8 +783,8 @@ function downloadOutput() {
 
 .generator-workspace {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
+  grid-template-columns: minmax(0, 1.18fr) minmax(220px, 260px) minmax(0, 1.18fr);
+  gap: 10px;
 }
 
 .generator-controls {
@@ -621,6 +829,10 @@ function downloadOutput() {
   padding-right: 14px;
 }
 
+.generator-fields-card {
+  min-width: 0;
+}
+
 .generator-card-header {
   display: flex;
   align-items: flex-start;
@@ -631,6 +843,92 @@ function downloadOutput() {
 .generator-field {
   display: grid;
   gap: 8px;
+}
+
+.generator-fields-list {
+  display: grid;
+  gap: 10px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.generator-field-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--vp-c-bg) 92%, transparent);
+}
+
+.generator-field-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.generator-field-card-header strong {
+  min-width: 0;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.generator-required-badge {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vp-c-brand-1) 12%, var(--vp-c-bg-soft));
+  color: var(--vp-c-brand-1);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.generator-field-card-type,
+.generator-fields-empty p {
+  margin: 0;
+  color: var(--vp-c-text-2);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.generator-field-card-control {
+  display: grid;
+  gap: 6px;
+}
+
+.generator-field-card-control span {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--vp-c-text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.generator-field-card-control select {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--vp-c-divider) 90%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--vp-c-bg) 96%, transparent);
+  color: var(--vp-c-text-1);
+  font: inherit;
+}
+
+.generator-field-card-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  color: var(--vp-c-text-2);
+}
+
+.generator-fields-empty {
+  display: grid;
+  place-items: center;
+  text-align: center;
 }
 
 .generator-field span {
@@ -927,7 +1225,13 @@ function downloadOutput() {
 
 @media (max-width: 1180px) {
   .generator-workspace {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .generator-fields-card {
+    grid-column: 1 / -1;
+    height: auto;
+    min-height: 280px;
   }
 }
 
@@ -935,6 +1239,10 @@ function downloadOutput() {
   .generator-shell {
     gap: 16px;
     padding-top: 14px;
+  }
+
+  .generator-workspace {
+    grid-template-columns: 1fr;
   }
 
   .generator-card {
@@ -946,6 +1254,11 @@ function downloadOutput() {
     height: 460px;
     padding-left: 12px;
     padding-right: 12px;
+  }
+
+  .generator-fields-card {
+    height: auto;
+    min-height: 260px;
   }
 
   .generator-controls {

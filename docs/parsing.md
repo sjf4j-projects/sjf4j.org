@@ -191,12 +191,13 @@ class ParentZoo {
     String kind;
 
     @AnyOf(
-        key = "kind",
         scope = AnyOf.Scope.PARENT,
+        key = "kind",
         value = {
             @AnyOf.Mapping(value = Cat.class, when = "cat"),
             @AnyOf.Mapping(value = Dog.class, when = "dog")
-        }
+        },
+        onNoMatch = AnyOf.OnNoMatch.FAILBACK_NULL
     )
     Animal pet;
 }
@@ -222,7 +223,7 @@ interface Poly {}
 class PolyObj extends JsonObject implements Poly {}
 class PolyArr extends JsonArray implements Poly {}
 
-Poly p1 = Sjf4j.global().fromJson("{\"a\":1}", Poly.class); // PolyObj
+Poly p1 = Sjf4j.global().fromJson("{\"a\":1}", Poly.class);     // PolyObj
 Poly p2 = Sjf4j.global().fromJson("[1,2,3]", Poly.class);       // PolyArr
 ```
 

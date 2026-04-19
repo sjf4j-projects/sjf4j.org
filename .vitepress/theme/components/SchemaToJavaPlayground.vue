@@ -1,23 +1,52 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 type ValidationNamespace = 'jakarta' | 'javax'
+type ValidationAnnotation = '@NotNull' | '@Size' | '@Min' | '@Max' | '@Pattern'
+type BooleanMapping = 'boolean' | 'Boolean'
+type DateTimeMapping = 'OffsetDateTime' | 'LocalDateTime' | 'Instant' | 'plainString'
+type EnumMapping = 'javaEnum' | 'plainString'
+type JavaDocGenerationMode = 'description' | 'title' | 'none'
 type AccessorMode = 'lombok' | 'methods' | 'none'
+type IntegerMapping = 'int' | 'Integer' | 'long' | 'Long' | 'BitInteger'
+type ModelingStrategy = 'jojo' | 'pojo'
+type NumberMapping = 'double' | 'Double' | 'BigDecimal' | 'int' | 'long'
+type ObjectLeafMapping = 'jsonObject' | 'mapObject' | 'jojo'
+type PathAccessMode = 'getterSetter' | 'pathGetterSetter'
+type FieldStrategy = 'all' | 'required' | 'none'
+type PathAccessorStrategy = 'all' | 'required' | 'none'
 type FieldMemberKind = 'field' | 'property'
+
+type FieldOverride = {
+  memberKind: FieldMemberKind
+  javaType?: string
+  pathAccessors?: PathAccessMode[]
+}
 
 type GeneratorOptions = {
   packageName: string
   className: string
+  booleanMapping: BooleanMapping
+  dateTimeMapping: DateTimeMapping
+  enumMapping: EnumMapping
+  integerMapping: IntegerMapping
+  modelingStrategy: ModelingStrategy
+  numberMapping: NumberMapping
+  objectLeafMapping: ObjectLeafMapping
+  fieldStrategy: FieldStrategy
   accessorMode: AccessorMode
+  pathAccessorStrategy: PathAccessorStrategy
   useValidation: boolean
+  validationAnnotations: ValidationAnnotation[]
   validationNamespace: ValidationNamespace
+  javaDocGeneration: JavaDocGenerationMode
   useBigDecimal: boolean
-  addJavaDoc: boolean
 }
 
 type SchemaNode = {
   title?: string
   description?: string
+  enum?: unknown[]
   type?: string | string[]
   format?: string
   properties?: Record<string, SchemaNode>
@@ -47,46 +76,15 @@ const exampleSchema = `{
     "paid": {
       "type": "boolean"
     },
-    "tags": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
     "customer": {
       "type": "object",
-      "required": ["id", "profile"],
+      "required": ["id", "email"],
       "properties": {
         "id": {
           "type": "string"
         },
-        "profile": {
-          "type": "object",
-          "required": ["email"],
-          "properties": {
-            "email": {
-              "type": "string"
-            },
-            "loyaltyTier": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    },
-    "shipping": {
-      "type": "object",
-      "properties": {
-        "address": {
-          "type": "object",
-          "properties": {
-            "city": {
-              "type": "string"
-            },
-            "country": {
-              "type": "string"
-            }
-          }
+        "email": {
+          "type": "string"
         }
       }
     },
@@ -101,39 +99,44 @@ const exampleSchema = `{
           },
           "quantity": {
             "type": "integer"
-          },
-          "pricing": {
-            "type": "object",
-            "properties": {
-              "unitPrice": {
-                "type": "number"
-              }
-            }
           }
         }
       }
-    },
-    "metadata": {
-      "type": "object",
-      "description": "Opaque integration-specific values."
     }
   }
 }`
+
+const validationAnnotationOptions: ValidationAnnotation[] = ['@NotNull', '@Size', '@Min', '@Max', '@Pattern']
+const pathAccessModeOptions: Array<{ value: PathAccessMode; label: string }> = [
+  { value: 'getterSetter', label: 'Getter/Setter' },
+  { value: 'pathGetterSetter', label: 'Path getter/setter' },
+]
 
 const schemaInput = ref(exampleSchema)
 const options = ref<GeneratorOptions>({
   packageName: 'org.example.generated',
   className: '',
+  booleanMapping: 'boolean',
+  dateTimeMapping: 'OffsetDateTime',
+  enumMapping: 'javaEnum',
+  integerMapping: 'int',
+  modelingStrategy: 'jojo',
+  numberMapping: 'double',
+  objectLeafMapping: 'jsonObject',
+  fieldStrategy: 'all',
   accessorMode: 'lombok',
+  pathAccessorStrategy: 'required',
   useValidation: true,
+  validationAnnotations: [...validationAnnotationOptions],
   validationNamespace: 'jakarta',
+  javaDocGeneration: 'description',
   useBigDecimal: true,
-  addJavaDoc: true,
 })
 const toastMessage = ref('')
 const copyButtonLabel = ref('Copy')
 const inputHighlightRef = ref<HTMLElement | null>(null)
-const fieldOverrides = ref<Record<string, { memberKind: FieldMemberKind; generateAccessors: boolean }>>({})
+const validationAnnotationsRef = ref<HTMLDetailsElement | null>(null)
+const fieldOverrides = ref<Record<string, FieldOverride>>({})
 
 function showToast(message: string) {
   toastMessage.value = message
@@ -143,6 +146,45 @@ function showToast(message: string) {
     }
   }, 2200)
 }
+
+function closeValidationAnnotationsMenu() {
+  if (validationAnnotationsRef.value?.open) {
+    validationAnnotationsRef.value.open = false
+  }
+}
+
+function handleDocumentClick(event: MouseEvent) {
+  const dropdown = validationAnnotationsRef.value
+  const target = event.target
+
+  if (!dropdown?.open || !(target instanceof Node) || dropdown.contains(target)) {
+    return
+  }
+
+  closeValidationAnnotationsMenu()
+}
+
+function handleDocumentKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    closeValidationAnnotationsMenu()
+  }
+}
+
+function handleValidationAnnotationsSummaryClick(event: MouseEvent) {
+  if (!options.value.useValidation) {
+    event.preventDefault()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleDocumentClick)
+  document.addEventListener('keydown', handleDocumentKeydown)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleDocumentClick)
+  document.removeEventListener('keydown', handleDocumentKeydown)
+})
 
 function detectObject(input: unknown): SchemaNode {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
@@ -254,6 +296,12 @@ function mapSchemaType(node: SchemaNode | undefined, useBigDecimal: boolean): { 
   }
 }
 
+function getDeclaredSchemaType(node: SchemaNode | undefined): string {
+  return Array.isArray(node?.type)
+    ? node?.type.find((entry) => entry !== 'null') || 'unknown'
+    : node?.type || 'unknown'
+}
+
 function schemaTypeLabel(node: SchemaNode | undefined): string {
   const declared = Array.isArray(node?.type)
     ? node.type.filter((entry) => entry !== 'null').join(' | ')
@@ -271,14 +319,14 @@ function collectSchemaFields(
   useBigDecimal: boolean,
   path = '',
   required = false,
-): Array<{ path: string; javaType: string; schemaType: string; required: boolean }> {
+): Array<{ path: string; javaType: string; schemaType: string; required: boolean; node: SchemaNode | undefined }> {
   if (!node) {
     return []
   }
 
   const typeLabel = schemaTypeLabel(node)
   const mapped = mapSchemaType(node, useBigDecimal)
-  const fields = [{ path, javaType: mapped.typeName, schemaType: typeLabel, required }]
+  const fields = [{ path, javaType: mapped.typeName, schemaType: typeLabel, required, node }]
 
   const declared = Array.isArray(node.type)
     ? node.type.find((entry) => entry !== 'null')
@@ -304,6 +352,132 @@ function collectSchemaFields(
   return fields
 }
 
+function getPathLeafName(path: string): string {
+  const segments = path.split('/').filter(Boolean)
+  const last = segments[segments.length - 1] || 'Value'
+  return /^\d+$/.test(last) ? `Index${last}` : last
+}
+
+function toJsonPath(path: string): string {
+  const segments = path.split('/').filter(Boolean)
+
+  if (segments.length === 0) {
+    return '$'
+  }
+
+  return segments.reduce((result, segment) => {
+    if (/^\d+$/.test(segment)) {
+      return `${result}[*]`
+    }
+
+    if (/^[A-Za-z_$][\w$]*$/.test(segment)) {
+      return `${result}.${segment}`
+    }
+
+    return `${result}["${segment.replace(/"/g, '\\"')}"]`
+  }, '$')
+}
+
+function getObjectLeafTypeLabel(mapping: ObjectLeafMapping): string {
+  switch (mapping) {
+    case 'jsonObject':
+      return 'JsonObject'
+    case 'mapObject':
+      return 'Map<String, Object>'
+    case 'jojo':
+      return 'JOJO'
+  }
+}
+
+function getDefaultTypeOption(node: SchemaNode | undefined, path: string, generatorOptions: GeneratorOptions): string {
+  const declared = getDeclaredSchemaType(node)
+
+  if (Array.isArray(node?.enum) && node.enum.length > 0) {
+    return generatorOptions.enumMapping === 'javaEnum'
+      ? `${toPascalCase(getPathLeafName(path))}Enum`
+      : 'String'
+  }
+
+  switch (declared) {
+    case 'string':
+      if (node?.format === 'date-time') {
+        return generatorOptions.dateTimeMapping === 'plainString'
+          ? 'String'
+          : generatorOptions.dateTimeMapping
+      }
+      if (node?.format === 'date') {
+        return 'LocalDate'
+      }
+      return 'String'
+    case 'integer':
+      return generatorOptions.integerMapping
+    case 'number':
+      return generatorOptions.numberMapping
+    case 'boolean':
+      return generatorOptions.booleanMapping
+    case 'object':
+      return getObjectLeafTypeLabel(generatorOptions.objectLeafMapping)
+    default:
+      return mapSchemaType(node, generatorOptions.useBigDecimal).typeName
+  }
+}
+
+function getTypeOptions(node: SchemaNode | undefined, path: string, generatorOptions: GeneratorOptions): string[] {
+  const declared = getDeclaredSchemaType(node)
+  const defaultOption = getDefaultTypeOption(node, path, generatorOptions)
+
+  let optionsForType: string[]
+
+  if (Array.isArray(node?.enum) && node.enum.length > 0) {
+    optionsForType = [`${toPascalCase(getPathLeafName(path))}Enum`, 'String']
+  } else {
+    switch (declared) {
+      case 'string':
+        if (node?.format === 'date-time') {
+          optionsForType = ['OffsetDateTime', 'LocalDateTime', 'Instant', 'String']
+        } else if (node?.format === 'date') {
+          optionsForType = ['LocalDate', 'String']
+        } else {
+          optionsForType = ['String']
+        }
+        break
+      case 'integer':
+        optionsForType = ['int', 'Integer', 'long', 'Long', 'BitInteger']
+        break
+      case 'number':
+        optionsForType = ['double', 'Double', 'BigDecimal', 'int', 'long']
+        break
+      case 'boolean':
+        optionsForType = ['boolean', 'Boolean']
+        break
+      case 'object':
+        optionsForType = ['JsonObject', 'Map<String, Object>', 'JOJO']
+        break
+      default:
+        optionsForType = [mapSchemaType(node, generatorOptions.useBigDecimal).typeName]
+        break
+    }
+  }
+
+  return Array.from(new Set([defaultOption, ...optionsForType]))
+}
+
+function getDefaultAccessors(required: boolean, generatorOptions: GeneratorOptions): PathAccessMode[] {
+  const accessors: PathAccessMode[] = []
+
+  if (generatorOptions.accessorMode !== 'none') {
+    accessors.push('getterSetter')
+  }
+
+  if (generatorOptions.pathAccessorStrategy === 'all') {
+    accessors.push('pathGetterSetter')
+  } else if (generatorOptions.pathAccessorStrategy === 'required' && required) {
+    accessors.push('pathGetterSetter')
+  }
+
+  return accessors
+}
+
 function renderJava(schema: SchemaNode, generatorOptions: GeneratorOptions): string {
   const normalizedClassName = generatorOptions.className.trim()
     ? toPascalCase(generatorOptions.className)
@@ -321,13 +495,14 @@ function renderJava(schema: SchemaNode, generatorOptions: GeneratorOptions): str
       imports.add(`${generatorOptions.validationNamespace}.validation.constraints.NotNull`)
     }
 
-    return {
-      propertyName,
-      fieldName: toCamelCase(propertyName),
-      description: propertySchema.description,
-      typeName: mapped.typeName,
-      required: required.has(propertyName),
-    }
+      return {
+        propertyName,
+        fieldName: toCamelCase(propertyName),
+        title: propertySchema.title,
+        description: propertySchema.description,
+        typeName: mapped.typeName,
+        required: required.has(propertyName),
+      }
   })
 
   if (generatorOptions.accessorMode === 'lombok') {
@@ -346,8 +521,14 @@ function renderJava(schema: SchemaNode, generatorOptions: GeneratorOptions): str
     ? `package ${generatorOptions.packageName.trim()};\n\n`
     : ''
 
-  const classDocs = generatorOptions.addJavaDoc && schema.description
-    ? `/**\n * ${escapeJavaDoc(schema.description)}\n */\n`
+  const classJavaDocText = generatorOptions.javaDocGeneration === 'description'
+    ? schema.description
+    : generatorOptions.javaDocGeneration === 'title'
+      ? schema.title
+      : ''
+
+  const classDocs = classJavaDocText
+    ? `/**\n * ${escapeJavaDoc(classJavaDocText)}\n */\n`
     : ''
 
   const classAnnotations = generatorOptions.accessorMode === 'lombok'
@@ -356,8 +537,14 @@ function renderJava(schema: SchemaNode, generatorOptions: GeneratorOptions): str
 
   const fieldBlock = fields.length > 0
     ? fields.map((field) => {
-      const javaDoc = generatorOptions.addJavaDoc && field.description
-        ? `    /** ${escapeJavaDoc(field.description)} */\n`
+      const fieldJavaDocText = generatorOptions.javaDocGeneration === 'description'
+        ? field.description
+        : generatorOptions.javaDocGeneration === 'title'
+          ? field.title
+          : ''
+
+      const javaDoc = fieldJavaDocText
+        ? `    /** ${escapeJavaDoc(fieldJavaDocText)} */\n`
         : ''
       const validation = generatorOptions.useValidation && field.required
         ? '    @NotNull\n'
@@ -426,6 +613,24 @@ const outputStats = computed(() => {
 
 const outputHeaderMeta = computed(() => `${resolvedClassName.value}.java · ${outputStats.value}`)
 
+const validationAnnotationsLabel = computed(() => {
+  const selected = options.value.validationAnnotations
+
+  if (selected.length === 0) {
+    return 'None'
+  }
+
+  if (selected.length === validationAnnotationOptions.length) {
+    return 'All'
+  }
+
+  if (selected.length <= 2) {
+    return selected.join(', ')
+  }
+
+  return `${selected.length} selected`
+})
+
 const parsedFieldList = computed(() => {
   if (typeof parsedSchema.value === 'string') {
     return []
@@ -434,20 +639,22 @@ const parsedFieldList = computed(() => {
   return collectSchemaFields(parsedSchema.value, options.value.useBigDecimal)
     .filter((field) => field.path !== '')
     .map((field) => {
-    const override = fieldOverrides.value[field.path] || {
-      memberKind: 'field' as FieldMemberKind,
-      generateAccessors: false,
-    }
+      const defaultJavaType = getDefaultTypeOption(field.node, field.path, options.value)
+      const override = fieldOverrides.value[field.path] || {}
+      const defaultPathAccessors = getDefaultAccessors(field.required, options.value)
+      const resolvedJavaType = override.javaType || defaultJavaType
 
-    return {
-      path: field.path,
-      javaType: field.javaType,
-      schemaType: field.schemaType,
-      required: field.required,
-      memberKind: override.memberKind,
-      generateAccessors: override.generateAccessors,
-    }
-  })
+      return {
+        path: field.path,
+        displayPath: toJsonPath(field.path),
+        javaType: resolvedJavaType,
+        schemaType: field.schemaType,
+        required: field.required,
+        memberKind: override.memberKind || 'field',
+        pathAccessors: override.pathAccessors || defaultPathAccessors,
+        typeOptions: Array.from(new Set([resolvedJavaType, ...getTypeOptions(field.node, field.path, options.value)])),
+      }
+    })
 })
 
 const highlightedInput = computed(() => highlightJson(schemaInput.value))
@@ -463,22 +670,34 @@ function syncInputHighlight(event: Event) {
   inputHighlightRef.value.scrollLeft = target.scrollLeft
 }
 
+function toggleValidationAnnotation(annotation: ValidationAnnotation) {
+  if (!options.value.useValidation) {
+    return
+  }
+
+  const selected = options.value.validationAnnotations
+
+  options.value.validationAnnotations = selected.includes(annotation)
+    ? selected.filter((entry) => entry !== annotation)
+    : [...selected, annotation]
+}
+
 function updateFieldMemberKind(name: string, memberKind: FieldMemberKind) {
   fieldOverrides.value = {
     ...fieldOverrides.value,
     [name]: {
+      ...fieldOverrides.value[name],
       memberKind,
-      generateAccessors: fieldOverrides.value[name]?.generateAccessors || false,
     },
   }
 }
 
-function updateFieldAccessors(name: string, generateAccessors: boolean) {
+function updateFieldType(name: string, javaType: string) {
   fieldOverrides.value = {
     ...fieldOverrides.value,
     [name]: {
-      memberKind: fieldOverrides.value[name]?.memberKind || 'field',
-      generateAccessors,
+      ...fieldOverrides.value[name],
+      javaType,
     },
   }
 }
@@ -487,8 +706,23 @@ function handleFieldMemberKindChange(name: string, event: Event) {
   updateFieldMemberKind(name, (event.target as HTMLSelectElement).value as FieldMemberKind)
 }
 
-function handleFieldAccessorChange(name: string, event: Event) {
-  updateFieldAccessors(name, (event.target as HTMLInputElement).checked)
+function handleFieldTypeChange(name: string, event: Event) {
+  updateFieldType(name, (event.target as HTMLSelectElement).value)
+}
+
+function toggleFieldPathAccess(name: string, mode: PathAccessMode) {
+  const current = fieldOverrides.value[name]?.pathAccessors || []
+  const pathAccessors = current.includes(mode)
+    ? current.filter((entry) => entry !== mode)
+    : [...current, mode]
+
+  fieldOverrides.value = {
+    ...fieldOverrides.value,
+    [name]: {
+      ...fieldOverrides.value[name],
+      pathAccessors,
+    },
+  }
 }
 
 function loadExample() {
@@ -509,11 +743,21 @@ function resetOptions() {
   options.value = {
     packageName: 'org.example.generated',
     className: '',
+    booleanMapping: 'boolean',
+    dateTimeMapping: 'OffsetDateTime',
+    enumMapping: 'javaEnum',
+    integerMapping: 'int',
+    modelingStrategy: 'jojo',
+    numberMapping: 'double',
+    objectLeafMapping: 'jsonObject',
+    fieldStrategy: 'all',
     accessorMode: 'lombok',
+    pathAccessorStrategy: 'required',
     useValidation: true,
+    validationAnnotations: [...validationAnnotationOptions],
     validationNamespace: 'jakarta',
+    javaDocGeneration: 'description',
     useBigDecimal: true,
-    addJavaDoc: true,
   }
   fieldOverrides.value = {}
   showToast('Generator options reset.')
@@ -572,8 +816,128 @@ function downloadOutput() {
 
         <label class="generator-field">
           <span>Class name override</span>
-          <input v-model="options.className" type="text" placeholder="Leave empty to use schema.title" />
+          <input v-model="options.className" type="text" placeholder="Leave empty to use title" />
         </label>
+
+        <label class="generator-field">
+          <span>Modeling strategy</span>
+          <select v-model="options.modelingStrategy">
+            <option value="jojo">JOJO preferred</option>
+            <option value="pojo">POJO preferred</option>
+          </select>
+        </label>
+
+        <label class="generator-field">
+          <span>Field generation</span>
+          <select v-model="options.fieldStrategy">
+            <option value="all">All</option>
+            <option value="required">Required Only</option>
+            <option value="none">None</option>
+          </select>
+        </label>
+
+        <label class="generator-field">
+          <span>Accessor strategy</span>
+          <select v-model="options.accessorMode">
+            <option value="lombok">Lombok annotations</option>
+            <option value="methods">Generate getters and setters</option>
+            <option value="none">Public fields</option>
+          </select>
+        </label>
+
+        <label class="generator-field">
+          <span>Path accessor</span>
+          <select v-model="options.pathAccessorStrategy">
+            <option value="all">All</option>
+            <option value="required">Required Only</option>
+            <option value="none">None</option>
+          </select>
+        </label>
+
+        <label class="generator-field">
+          <span>Object leaf mapping</span>
+          <select v-model="options.objectLeafMapping">
+            <option value="jsonObject">JsonObject</option>
+            <option value="mapObject">Map&lt;String, Object&gt;</option>
+            <option value="jojo">JOJO</option>
+          </select>
+        </label>
+
+        <label class="generator-field">
+          <span>Number mapping</span>
+          <select v-model="options.numberMapping">
+            <option value="double">double</option>
+            <option value="Double">Double</option>
+            <option value="BigDecimal">BigDecimal</option>
+            <option value="int">int</option>
+            <option value="long">long</option>
+          </select>
+        </label>
+
+        <label class="generator-field">
+          <span>Integer mapping</span>
+          <select v-model="options.integerMapping">
+            <option value="int">int</option>
+            <option value="Integer">Integer</option>
+            <option value="long">long</option>
+            <option value="Long">Long</option>
+            <option value="BitInteger">BitInteger</option>
+          </select>
+        </label>
+
+        <label class="generator-field">
+          <span>Boolean mapping</span>
+          <select v-model="options.booleanMapping">
+            <option value="boolean">boolean</option>
+            <option value="Boolean">Boolean</option>
+          </select>
+        </label>
+
+        <label class="generator-field">
+          <span>Enum mapping</span>
+          <select v-model="options.enumMapping">
+            <option value="javaEnum">Java enum</option>
+            <option value="plainString">Plain string</option>
+          </select>
+        </label>
+
+        <label class="generator-field">
+          <span>DateTime mapping</span>
+          <select v-model="options.dateTimeMapping">
+            <option value="OffsetDateTime">OffsetDateTime</option>
+            <option value="LocalDateTime">LocalDateTime</option>
+            <option value="Instant">Instant</option>
+            <option value="plainString">Plain string</option>
+          </select>
+        </label>
+
+        <div class="generator-field">
+          <span>Validation annotations</span>
+          <details ref="validationAnnotationsRef" class="generator-multiselect" :class="{ 'is-disabled': !options.useValidation }">
+            <summary @click="handleValidationAnnotationsSummaryClick">
+              <span>{{ validationAnnotationsLabel }}</span>
+            </summary>
+
+            <div class="generator-multiselect-menu">
+              <button
+                v-for="annotation in validationAnnotationOptions"
+                :key="annotation"
+                type="button"
+                class="generator-multiselect-option"
+                :disabled="!options.useValidation"
+                @click="toggleValidationAnnotation(annotation)"
+              >
+                <span class="generator-multiselect-option-label">{{ annotation }}</span>
+                <span
+                  class="generator-multiselect-option-check"
+                  :class="{ 'is-selected': options.validationAnnotations.includes(annotation) }"
+                >
+                  ✓
+                </span>
+              </button>
+            </div>
+          </details>
+        </div>
 
         <label class="generator-field">
           <span>Validation namespace</span>
@@ -584,38 +948,12 @@ function downloadOutput() {
         </label>
 
         <label class="generator-field">
-          <span>Accessor strategy</span>
-          <select v-model="options.accessorMode">
-            <option value="lombok">Lombok annotations</option>
-            <option value="methods">Generate getters and setters</option>
-            <option value="none">Fields only</option>
+          <span>JavaDoc generation</span>
+          <select v-model="options.javaDocGeneration">
+            <option value="description">Description only</option>
+            <option value="title">Title only</option>
+            <option value="none">None</option>
           </select>
-        </label>
-      </div>
-
-      <div class="generator-toggle-grid">
-        <label class="generator-toggle">
-          <input v-model="options.useValidation" type="checkbox" />
-          <span>
-            <strong>Emit validation annotations</strong>
-            <small>Map required properties to @NotNull</small>
-          </span>
-        </label>
-
-        <label class="generator-toggle">
-          <input v-model="options.useBigDecimal" type="checkbox" />
-          <span>
-            <strong>Prefer BigDecimal</strong>
-            <small>Use BigDecimal instead of Double for schema numbers</small>
-          </span>
-        </label>
-
-        <label class="generator-toggle">
-          <input v-model="options.addJavaDoc" type="checkbox" />
-          <span>
-            <strong>Emit JavaDoc</strong>
-            <small>Use schema descriptions for class and field comments</small>
-          </span>
         </label>
       </div>
 
@@ -648,42 +986,59 @@ function downloadOutput() {
       <section class="generator-card generator-workspace-card generator-fields-card">
         <div class="generator-card-header">
           <div>
-            <p class="generator-card-kicker">Fields</p>
+            <p class="generator-card-kicker">Parsed Properties</p>
           </div>
-          <span class="generator-meta">{{ parsedFieldList.length }} fields</span>
+          <span class="generator-meta">{{ parsedFieldList.length }} properties</span>
         </div>
 
         <div v-if="generatedOutput.error" class="generator-error generator-fields-empty">
           <strong>Invalid schema</strong>
-          <p>Fix the JSON input to preview parsed fields.</p>
+          <p>Fix the JSON input to preview parsed properties.</p>
         </div>
 
         <div v-else-if="parsedFieldList.length === 0" class="generator-fields-empty">
-          <strong>No fields found</strong>
-          <p>Add object properties to the schema to inspect field-level generation options.</p>
+          <strong>No properties found</strong>
+          <p>Add object properties to the schema to inspect property-level generation options.</p>
         </div>
 
         <div v-else class="generator-fields-list">
-          <article v-for="field in parsedFieldList" :key="field.name" class="generator-field-card">
+          <article v-for="field in parsedFieldList" :key="field.path" class="generator-field-card">
             <div class="generator-field-card-header">
-            <strong>{{ field.path }}</strong>
+            <strong>{{ field.displayPath }}</strong>
               <span v-if="field.required" class="generator-required-badge">required</span>
             </div>
 
-            <p class="generator-field-card-type">{{ field.schemaType }} → {{ field.javaType }}</p>
+            <p class="generator-field-card-type">{{ field.schemaType }}</p>
 
-            <label class="generator-field-card-control">
-              <span>Member</span>
-              <select :value="field.memberKind" @change="handleFieldMemberKindChange(field.path, $event)">
-                <option value="field">Field</option>
-                <option value="property">Property</option>
-              </select>
-            </label>
+            <div class="generator-field-card-row">
+              <label class="generator-field-card-control">
+                <select :value="field.memberKind" @change="handleFieldMemberKindChange(field.path, $event)">
+                  <option value="field">Field</option>
+                  <option value="property">Property</option>
+                </select>
+              </label>
 
-            <label class="generator-field-card-toggle">
-              <input :checked="field.generateAccessors" type="checkbox" @change="handleFieldAccessorChange(field.path, $event)" />
-              <span>Generate getter/setter</span>
-            </label>
+              <label class="generator-field-card-control">
+                <select :value="field.javaType" @change="handleFieldTypeChange(field.path, $event)">
+                  <option v-for="typeOption in field.typeOptions" :key="typeOption" :value="typeOption">{{ typeOption }}</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="generator-field-card-control">
+              <div class="generator-field-card-chip-group">
+                <button
+                  v-for="mode in pathAccessModeOptions"
+                  :key="mode.value"
+                  type="button"
+                  class="generator-field-card-chip"
+                  :class="{ 'is-selected': field.pathAccessors.includes(mode.value) }"
+                  @click="toggleFieldPathAccess(field.path, mode.value)"
+                >
+                  {{ mode.label }}
+                </button>
+              </div>
+            </div>
           </article>
         </div>
       </section>
@@ -739,8 +1094,8 @@ function downloadOutput() {
   gap: 14px;
   padding-top: 14px;
   width: 100%;
-  max-width: var(--vp-layout-max-width);
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
 }
 
 .generator-simple-header h1 {
@@ -783,7 +1138,7 @@ function downloadOutput() {
 
 .generator-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(220px, 260px) minmax(0, 1.18fr);
+  grid-template-columns: minmax(0, 1.13fr) minmax(250px, 310px) minmax(0, 1.13fr);
   gap: 10px;
 }
 
@@ -877,12 +1232,14 @@ function downloadOutput() {
 
 .generator-required-badge {
   flex: none;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--vp-c-brand-1) 12%, var(--vp-c-bg-soft));
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--vp-c-brand-1);
   font-size: 0.72rem;
   font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .generator-field-card-type,
@@ -897,6 +1254,13 @@ function downloadOutput() {
 .generator-field-card-control {
   display: grid;
   gap: 6px;
+  min-width: 0;
+}
+
+.generator-field-card-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
 }
 
 .generator-field-card-control span {
@@ -908,6 +1272,7 @@ function downloadOutput() {
 }
 
 .generator-field-card-control select {
+  width: 100%;
   min-height: 38px;
   padding: 0 12px;
   border: 1px solid color-mix(in srgb, var(--vp-c-divider) 90%, transparent);
@@ -917,12 +1282,35 @@ function downloadOutput() {
   font: inherit;
 }
 
-.generator-field-card-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.generator-field-card-row .generator-field-card-control select {
+  min-height: 34px;
+  padding: 0 10px;
   font-size: 0.84rem;
+}
+
+.generator-field-card-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.generator-field-card-chip {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--vp-c-divider) 90%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vp-c-bg) 96%, transparent);
   color: var(--vp-c-text-2);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.generator-field-card-chip.is-selected {
+  border-color: color-mix(in srgb, var(--vp-c-brand-1) 40%, transparent);
+  background: color-mix(in srgb, var(--vp-c-brand-1) 12%, var(--vp-c-bg));
+  color: var(--vp-c-brand-1);
 }
 
 .generator-fields-empty {
@@ -934,6 +1322,152 @@ function downloadOutput() {
 .generator-field span {
   font-size: 0.88rem;
   font-weight: 600;
+}
+
+.generator-controls .generator-field span {
+  font-size: 0.84rem;
+}
+
+.generator-multiselect {
+  position: relative;
+  width: 100%;
+  height: 44px;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--vp-c-divider) 90%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--vp-c-bg) 92%, transparent);
+  color: var(--vp-c-text-1);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.generator-controls .generator-multiselect {
+  height: 40px;
+}
+
+.generator-multiselect.is-disabled {
+  opacity: 0.65;
+}
+
+.generator-multiselect[open] {
+  border-color: color-mix(in srgb, var(--vp-c-brand-1) 68%, white 0%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--vp-c-brand-1) 12%, transparent);
+}
+
+.generator-multiselect summary {
+  position: relative;
+  height: 100%;
+  margin: 0;
+  padding: 0 34px 0 14px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  cursor: pointer;
+  list-style: none;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.generator-controls .generator-multiselect summary {
+  padding: 0 32px 0 12px;
+}
+
+.generator-multiselect summary::-webkit-details-marker {
+  display: none;
+}
+
+.generator-multiselect summary:focus {
+  outline: none;
+}
+
+.generator-multiselect summary::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 5px;
+  height: 5px;
+  border-right: 1.25px solid var(--vp-c-text-2);
+  border-bottom: 1.25px solid var(--vp-c-text-2);
+  transform: translateY(-65%) rotate(45deg);
+  transition: transform 0.16s ease;
+}
+
+.generator-multiselect[open] summary::after {
+  transform: translateY(-35%) rotate(225deg);
+}
+
+.generator-multiselect summary span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.88rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.generator-controls .generator-multiselect summary span {
+  font-size: 0.84rem;
+}
+
+.generator-multiselect-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: grid;
+  gap: 2px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--vp-c-divider) 90%, transparent);
+  border-radius: 12px;
+  background: var(--vp-c-bg);
+  box-shadow: 0 10px 24px -18px rgba(15, 23, 42, 0.45);
+}
+
+.generator-multiselect-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+  width: 100%;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--vp-c-text-1);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.generator-multiselect-option:hover {
+  background: color-mix(in srgb, var(--vp-c-text-1) 4%, transparent);
+}
+
+.generator-multiselect-option:disabled {
+  cursor: default;
+}
+
+.generator-multiselect-option-label {
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.generator-multiselect-option-check {
+  flex: none;
+  width: 12px;
+  color: var(--vp-c-brand-1);
+  opacity: 0;
+  font-size: 0.72rem;
+  text-align: center;
+}
+
+.generator-multiselect-option-check.is-selected {
+  opacity: 1;
 }
 
 .generator-field input,
@@ -959,6 +1493,13 @@ function downloadOutput() {
 .generator-field select {
   min-height: 44px;
   padding: 0 14px;
+}
+
+.generator-controls .generator-field input,
+.generator-controls .generator-field select {
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 0.84rem;
 }
 
 .generator-field input:focus,

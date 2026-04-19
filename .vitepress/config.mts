@@ -270,7 +270,7 @@ export default withMermaid(defineConfig({
       { text: 'Home', link: '/' },
       { text: 'Docs', link: '/docs/getting_started' },
       { text: 'Generator', link: '/generator' },
-      { text: 'GitHub', link: 'https://github.com/sjf4j-projects/sjf4j' },
+      { text: 'Open an issue', link: 'https://github.com/sjf4j-projects/sjf4j/issues/new' },
     ],
 
     sidebar: [
@@ -279,8 +279,6 @@ export default withMermaid(defineConfig({
         items: [
           { text: 'Getting Started', link: '/docs/getting_started' },
           { text: 'Benchmarks', link: '/docs/benchmarks' },
-          { text: 'Changelog', link: '/docs/changelog' },
-          { text: 'FAQ', link: '/docs/faq' },
         ],
       },
       {
@@ -298,7 +296,9 @@ export default withMermaid(defineConfig({
         text: 'Reference',
         items: [
           { text: 'Javadocs', link: 'https://javadoc.io/doc/org.sjf4j/sjf4j' },
-          { text: 'Bowtie', link: 'https://bowtie.report/#/implementations/java-sjf4j' }
+          { text: 'Bowtie', link: 'https://bowtie.report/#/implementations/java-sjf4j' },
+          { text: 'Changelog', link: '/docs/changelog' },
+          { text: 'FAQ', link: '/docs/faq' },
         ],
       },
     ],

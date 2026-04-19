@@ -148,7 +148,7 @@
 
 .generator-page.VPDoc,
 .generator-page .VPDoc {
-  padding-top: 8px !important;
+  padding: 8px 12px 0 !important;
 }
 
 .generator-page.VPDoc .container,
@@ -165,7 +165,7 @@
 
 .generator-page.VPDoc .content,
 .generator-page .VPDoc .content {
-  padding: 0 24px 80px !important;
+  padding: 0 12px 80px !important;
 }
 
 .generator-page.VPDoc:not(.has-sidebar) .content,
@@ -184,6 +184,27 @@
   max-width: none !important;
 }
 
+.generator-page .vp-doc > :first-child {
+  width: 100% !important;
+  max-width: 1540px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.generator-page .vp-doc > :first-child > .generator-shell {
+  width: 100% !important;
+  max-width: 1540px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.generator-page .vp-doc > .generator-shell {
+  width: 100% !important;
+  max-width: 1540px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
 .generator-page .vp-doc > :not(.generator-shell) {
   max-width: var(--vp-layout-max-width);
   margin-left: auto;
@@ -197,12 +218,12 @@
 @media (max-width: 768px) {
   .generator-page.VPDoc,
   .generator-page .VPDoc {
-    padding-top: 4px !important;
+    padding: 4px 8px 0 !important;
   }
 
   .generator-page.VPDoc .content,
   .generator-page .VPDoc .content {
-    padding: 0 16px 56px !important;
+    padding: 0 12px 56px !important;
   }
 }
 

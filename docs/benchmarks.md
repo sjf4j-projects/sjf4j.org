@@ -185,10 +185,12 @@ Geometric mean, lower is better:
 | `query_maplist_definite`    |  `31.034 ns/op` |  `188.431 ns/op` | SJF4J `6.07x` faster |
 | `query_maplist_indefinite`  | `290.317 ns/op` | `1292.203 ns/op` | SJF4J `4.45x` faster |
 
+> In addition to `query` APIs, SJF4J also provides `mutation` APIs 
+> such as `put`, `ensurePut` and `add`/`replace`/`remove`.
 
 **SJF4J Object Model Comparison**
 
-SJF4J can run JSONPath directly over multiple Java object models.  
+SJF4J can run JSON Path directly over multiple Java object models.  
 For native Java object graphs, `Map/List` is still fastest. `JOJO` stays close to `Map/List` and remains clearly ahead of plain `POJO`, especially on definite queries.
 
 | Benchmark group |        Map/List |            JOJO |            POJO |
@@ -198,7 +200,7 @@ For native Java object graphs, `Map/List` is still fastest. `JOJO` stays close t
 
 **Summary**:
 
-- SJF4J shows strong performance in `compile` and `query` workloads, while also providing `mutation` operations.
+- SJF4J shows strong performance in `compile` and `query` workloads, and provides comprehensive `mutation` operations.
 - Within SJF4J, `Map/List` gives the best raw speed, while `JOJO` stays much closer to `Map/List` than plain `POJO` does.
 
 ## JSON Schema Validation Benchmark

@@ -157,11 +157,13 @@ function handleDocumentClick(event: MouseEvent) {
   const dropdown = validationAnnotationsRef.value
   const target = event.target
 
-  if (!dropdown?.open || !(target instanceof Node) || dropdown.contains(target)) {
+  if (!(target instanceof Node)) {
     return
   }
 
-  closeValidationAnnotationsMenu()
+  if (dropdown?.open && !dropdown.contains(target)) {
+    closeValidationAnnotationsMenu()
+  }
 }
 
 function handleDocumentKeydown(event: KeyboardEvent) {
@@ -727,7 +729,12 @@ function toggleFieldPathAccess(name: string, mode: PathAccessMode) {
 
 function loadExample() {
   schemaInput.value = exampleSchema
-  showToast('Loaded example schema.')
+  showToast('Reloaded sample schema.')
+}
+
+function confirmReloadSample(hide: () => void) {
+  loadExample()
+  hide()
 }
 
 function formatInput() {
@@ -969,6 +976,28 @@ function downloadOutput() {
         </div>
 
         <div class="generator-editor-shell">
+          <div class="generator-editor-actions-floating">
+            <VDropdown placement="bottom-end" :distance="8" :triggers="['click']" :auto-hide="true">
+              <button
+                type="button"
+                class="generator-icon-button"
+                aria-label="Reload sample"
+                title="Reload sample"
+              >
+                ↺
+              </button>
+
+              <template #popper="{ hide }">
+                <div class="generator-popconfirm">
+                  <p>Reload sample?</p>
+                  <div class="generator-popconfirm-actions">
+                    <button type="button" class="generator-popconfirm-button" @click="hide()">Cancel</button>
+                    <button type="button" class="generator-popconfirm-button is-primary" @click="confirmReloadSample(hide)">Reload</button>
+                  </div>
+                </div>
+              </template>
+            </VDropdown>
+          </div>
           <pre ref="inputHighlightRef" class="generator-editor-highlight" aria-hidden="true"><code v-html="highlightedInput"></code></pre>
           <textarea
             id="json-schema-input"
@@ -1608,6 +1637,7 @@ function downloadOutput() {
   height: 100%;
 }
 
+.generator-editor-actions-floating,
 .generator-output-actions-floating {
   position: absolute;
   top: 12px;
@@ -1620,6 +1650,8 @@ function downloadOutput() {
   transition: opacity 0.16s ease;
 }
 
+.generator-editor-shell:hover .generator-editor-actions-floating,
+.generator-editor-shell:focus-within .generator-editor-actions-floating,
 .generator-output-surface:hover .generator-output-actions-floating,
 .generator-output-surface:focus-within .generator-output-actions-floating {
   opacity: 1;
@@ -1645,6 +1677,41 @@ function downloadOutput() {
 .generator-icon-button:hover {
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--vp-c-brand-1) 48%, transparent);
+}
+
+.generator-popconfirm {
+  min-width: 168px;
+  padding: 2px;
+}
+
+.generator-popconfirm p {
+  margin: 0 0 8px;
+  color: var(--vp-c-text-1);
+  font-size: 0.8rem;
+}
+
+.generator-popconfirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.generator-popconfirm-button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--vp-c-divider) 88%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vp-c-bg) 96%, transparent);
+  color: var(--vp-c-text-1);
+  font: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.generator-popconfirm-button.is-primary {
+  border-color: color-mix(in srgb, var(--vp-c-brand-1) 48%, transparent);
+  background: color-mix(in srgb, var(--vp-c-brand-1) 12%, var(--vp-c-bg));
+  color: var(--vp-c-brand-1);
 }
 
 .generator-editor-highlight :deep(.token-json-key) {

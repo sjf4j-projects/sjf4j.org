@@ -1,14 +1,17 @@
 import DefaultTheme from 'vitepress/theme'
 import { h } from 'vue'
 import type { Theme } from 'vitepress'
+import FloatingVue from 'floating-vue'
 import MavenInstallSnippet from './components/MavenInstallSnippet.vue'
 import MermaidRuntime from './components/MermaidRuntime.vue'
 import SchemaToJavaPlayground from './components/SchemaToJavaPlayground.vue'
 import './custom.css'
+import 'floating-vue/dist/style.css'
 
 const theme: Theme = {
   extends: DefaultTheme,
   enhanceApp({ app }) {
+    app.use(FloatingVue)
     app.component('MavenInstallSnippet', MavenInstallSnippet)
     app.component('Mermaid', MermaidRuntime)
     app.component('SchemaToJavaPlayground', SchemaToJavaPlayground)

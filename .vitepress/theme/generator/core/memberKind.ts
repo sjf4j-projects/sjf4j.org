@@ -1,5 +1,7 @@
 import type { FieldMemberKind, FieldOverride, GeneratorOptions, SchemaNode } from './types'
 
+export type ObjectMode = 'jojo' | 'pojo' | 'jsonObject'
+
 function getDeclaredType(schema: SchemaNode | undefined): string {
   return Array.isArray(schema?.type)
     ? schema?.type.find((entry) => entry !== 'null') || 'unknown'
@@ -12,6 +14,26 @@ export function allowsAdditionalProperties(schema: SchemaNode): boolean {
 
 export function shouldRenderAsJojo(schema: SchemaNode, generatorOptions: GeneratorOptions): boolean {
   return allowsAdditionalProperties(schema) || generatorOptions.modelingStrategy === 'jojo'
+}
+
+export function getEffectiveObjectMode(
+  schema: SchemaNode,
+  generatorOptions: GeneratorOptions,
+  overrideJavaType?: string,
+): ObjectMode {
+  if (overrideJavaType === 'JsonObject') {
+    return 'jsonObject'
+  }
+
+  if (overrideJavaType === 'POJO') {
+    return 'pojo'
+  }
+
+  if (overrideJavaType === 'JOJO') {
+    return 'jojo'
+  }
+
+  return shouldRenderAsJojo(schema, generatorOptions) ? 'jojo' : 'pojo'
 }
 
 export function shouldDisableDynamicReads(schema: SchemaNode, generatorOptions: GeneratorOptions): boolean {
@@ -72,9 +94,10 @@ export function resolveMemberKind(
   ownerSchema: SchemaNode,
   generatorOptions: GeneratorOptions,
   override: FieldOverride | undefined,
+  ownerOverrideJavaType?: string,
 ): { memberKind: FieldMemberKind; propertyAllowed: boolean } {
-  const propertyAllowed = shouldRenderAsJojo(ownerSchema, generatorOptions)
-  const defaultMemberKind = getDefaultMemberKind(required, ownerSchema, generatorOptions)
+  const propertyAllowed = getEffectiveObjectMode(ownerSchema, generatorOptions, ownerOverrideJavaType) === 'jojo'
+  const defaultMemberKind = propertyAllowed ? getDefaultMemberKind(required, ownerSchema, generatorOptions) : 'field'
 
   if (!propertyAllowed) {
     return {

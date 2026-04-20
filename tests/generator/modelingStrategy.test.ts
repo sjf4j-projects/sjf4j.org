@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { createDefaultGeneratorOptions, generateJavaOutput, parseSchemaText } from '../../.vitepress/theme/generator/core'
+import { createDefaultGeneratorOptions, generateJavaOutput, parseSchemaText, type FieldOverride } from '../../.vitepress/theme/generator/core'
 
-function generate(schemaText: string, modelingStrategy: 'jojo' | 'pojo' = 'jojo'): string {
+function generate(
+  schemaText: string,
+  modelingStrategy: 'jojo' | 'pojo' = 'jojo',
+  fieldOverrides: Record<string, FieldOverride> = {},
+): string {
   const options = createDefaultGeneratorOptions()
   options.modelingStrategy = modelingStrategy
 
@@ -10,7 +14,7 @@ function generate(schemaText: string, modelingStrategy: 'jojo' | 'pojo' = 'jojo'
     throw new Error(parsed.error)
   }
 
-  return generateJavaOutput(parsed, options).code
+  return generateJavaOutput(parsed, options, fieldOverrides).code
 }
 
 describe('generator modeling strategy', () => {
@@ -95,9 +99,29 @@ describe('generator modeling strategy', () => {
     expect(code).toContain('private List<ItemsItem> items;')
     expect(code).toContain(' * JSON shape:')
     expect(code).toContain('public static class Customer extends JsonObject {')
-    expect(code).toContain(' *   "email": "string"')
+    expect(code.match(/JSON shape:/g)?.length).toBe(1)
     expect(code).toContain('public static class ItemsItem extends JsonObject {')
     expect(code).not.toContain('class Customer.java')
+  })
+
+  it('lets nested object members fall back to JsonObject when overridden', () => {
+    const code = generate(`{
+      "title": "Order",
+      "type": "object",
+      "properties": {
+        "customer": {
+          "type": "object",
+          "properties": {
+            "email": { "type": "string" }
+          }
+        }
+      }
+    }`, 'jojo', {
+      '/customer': { memberKind: 'field', javaType: 'JsonObject' },
+    })
+
+    expect(code).toContain('private JsonObject customer;')
+    expect(code).not.toContain('public static class Customer extends JsonObject {')
   })
 
   it('applies modeling strategy to nested objects too', () => {

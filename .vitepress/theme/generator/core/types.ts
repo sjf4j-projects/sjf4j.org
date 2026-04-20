@@ -81,6 +81,7 @@ export type ParsedFieldDescriptor = {
   javaType: string
   schemaType: string
   required: boolean
+  memberConfigAllowed: boolean
   memberKind: FieldMemberKind
   propertyAllowed: boolean
   pathAccessors: PathAccessMode[]

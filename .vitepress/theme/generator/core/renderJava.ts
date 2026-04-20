@@ -1,4 +1,4 @@
-import { shouldDisableDynamicReads, shouldRenderAsJojo, resolveMemberKind } from './memberKind'
+import { getEffectiveObjectMode, resolveMemberKind } from './memberKind'
 import { collectSchemaFields, getDefaultAccessors } from './mapping'
 import { getDefaultTypeOption, getEnumTypeName, isStringEnumSchema, mapSchemaType } from './mapping'
 import { toCamelCase, toPascalCase } from './naming'
@@ -90,13 +90,18 @@ function buildJsonShapeModel(node: SchemaNode | undefined): unknown {
   return getShapeLabel(node)
 }
 
-function renderClassJavaDoc(schema: SchemaNode, generatorOptions: GeneratorOptions, indentLevel: number): string {
-  const indent = getIndent(indentLevel)
+function renderClassJavaDoc(schema: SchemaNode, generatorOptions: GeneratorOptions, indentLevel: number, includeShape: boolean): string {
   const classJavaDocText = generatorOptions.javaDocGeneration === 'description'
     ? schema.description
     : generatorOptions.javaDocGeneration === 'title'
       ? schema.title
       : ''
+
+  if (!includeShape) {
+    return classJavaDocText ? renderJavaDocBlock(classJavaDocText, indentLevel) : ''
+  }
+
+  const indent = getIndent(indentLevel)
 
   const shapeText = JSON.stringify(buildJsonShapeModel(schema), null, 2)
   const lines = [
@@ -109,6 +114,18 @@ function renderClassJavaDoc(schema: SchemaNode, generatorOptions: GeneratorOptio
   ]
 
   return `${indent}/**\n${lines.map((line) => line ? `${indent} * ${escapeJavaDoc(line)}` : `${indent} *`).join('\n')}\n${indent} */`
+}
+
+function getObjectModeForSchema(schema: SchemaNode, generatorOptions: GeneratorOptions, overrideJavaType?: string) {
+  return getEffectiveObjectMode(schema, generatorOptions, overrideJavaType)
+}
+
+function shouldRenderObjectAsJojo(schema: SchemaNode, generatorOptions: GeneratorOptions, overrideJavaType?: string): boolean {
+  return getObjectModeForSchema(schema, generatorOptions, overrideJavaType) === 'jojo'
+}
+
+function shouldDisableDynamicReadsForObject(schema: SchemaNode, generatorOptions: GeneratorOptions, overrideJavaType?: string): boolean {
+  return getObjectModeForSchema(schema, generatorOptions, overrideJavaType) === 'jojo' && schema.additionalProperties === false
 }
 
 function normalizeEnumConstantName(value: string): string {
@@ -281,6 +298,18 @@ function buildJsonPathExpression(path: string, indexParams: Array<{ name: string
   return parts.join('')
 }
 
+function buildJsonPathLiteral(path: string): string {
+  return JSON.stringify(buildJsonPathExpression(path, []).slice(1, -1))
+}
+
+function buildPathConstantName(path: string): string {
+  return `PATH_${path
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => (/^\d+$/.test(segment) ? 'INDEX' : normalizeEnumConstantName(segment)))
+    .join('_')}`
+}
+
 function getFallbackTypeNameForPath(path: string): string {
   const segments = path.split('/').filter(Boolean)
   const last = segments[segments.length - 1]
@@ -308,6 +337,12 @@ function resolveTypeNameForPath(
   }
 
   if (shouldMaterializeObjectClass(node)) {
+    const objectMode = getObjectModeForSchema(node, generatorOptions, fieldOverrides[propertyPath]?.javaType)
+    if (objectMode === 'jsonObject') {
+      addImportsForResolvedType('JsonObject', imports)
+      return 'JsonObject'
+    }
+
     return resolveClassName(node, getFallbackTypeNameForPath(propertyPath))
   }
 
@@ -393,9 +428,9 @@ function renderPathAccessorBlock(
   imports: Set<string>,
   fieldOverrides: Record<string, FieldOverride>,
   indentLevel: number,
-): string {
-  if (!shouldRenderAsJojo(rootSchema, generatorOptions)) {
-    return ''
+): { constants: string; methods: string } {
+  if (!shouldRenderObjectAsJojo(rootSchema, generatorOptions)) {
+    return { constants: '', methods: '' }
   }
 
   const fields = collectSchemaFields(rootSchema, generatorOptions.useBigDecimal)
@@ -407,23 +442,93 @@ function renderPathAccessorBlock(
     })
 
   if (fields.length === 0) {
-    return ''
+    return { constants: '', methods: '' }
   }
 
   const memberIndent = getIndent(indentLevel + 1)
+  const pathConstantLines: string[] = []
 
-  return fields.map((field) => {
+  const methods = fields.map((field) => {
     const typeName = resolveTypeNameForPath(field.node, field.path, generatorOptions, imports, fieldOverrides)
     const methodSuffix = buildPathAccessorMethodName(field.path)
     const indexParams = buildPathAccessorIndexParams(field.path)
+    const usesConstantPath = indexParams.length === 0
     const pathExpression = buildJsonPathExpression(field.path, indexParams)
+    const pathReference = usesConstantPath ? buildPathConstantName(field.path) : pathExpression
     const getterParams = indexParams.map((param) => `int ${param.name}`).join(', ')
     const setterParams = [...indexParams.map((param) => `int ${param.name}`), `${typeName} value`].join(', ')
     const getterSignature = `${memberIndent}public ${typeName} get${methodSuffix}(${getterParams}) {`
     const setterSignature = `${memberIndent}public void set${methodSuffix}(${setterParams}) {`
 
-    return `${getterSignature}\n${renderPathGetterBody(typeName, pathExpression, indentLevel)}\n${memberIndent}}\n\n${setterSignature}\n${getIndent(indentLevel + 2)}putByPath(${pathExpression}, value);\n${memberIndent}}`
+    if (usesConstantPath) {
+      imports.add('org.sjf4j.path.JsonPath')
+      pathConstantLines.push(`${memberIndent}private static final JsonPath ${pathReference} = JsonPath.compile(${buildJsonPathLiteral(field.path)});`)
+    }
+
+    const getterBody = usesConstantPath
+      ? renderCompiledPathGetterBody(typeName, pathReference, indentLevel)
+      : renderPathGetterBody(typeName, pathExpression, indentLevel)
+    const setterBody = usesConstantPath
+      ? `${getIndent(indentLevel + 2)}${pathReference}.put(this, value);`
+      : `${getIndent(indentLevel + 2)}putByPath(${pathExpression}, value);`
+
+    return `${getterSignature}\n${getterBody}\n${memberIndent}}\n\n${setterSignature}\n${setterBody}\n${memberIndent}}`
   }).join('\n\n')
+
+  return {
+    constants: pathConstantLines.join('\n'),
+    methods,
+  }
+}
+
+function renderCompiledPathGetterBody(typeName: string, pathReference: string, indentLevel: number): string {
+  const bodyIndent = getIndent(indentLevel + 2)
+
+  switch (typeName) {
+    case 'String':
+      return `${bodyIndent}return ${pathReference}.getString(this);`
+    case 'int':
+      return `${bodyIndent}final Integer value = ${pathReference}.getInt(this);\n${bodyIndent}return value == null ? 0 : value;`
+    case 'Integer':
+      return `${bodyIndent}return ${pathReference}.getInt(this);`
+    case 'long':
+      return `${bodyIndent}final Long value = ${pathReference}.getLong(this);\n${bodyIndent}return value == null ? 0L : value;`
+    case 'Long':
+      return `${bodyIndent}return ${pathReference}.getLong(this);`
+    case 'double':
+      return `${bodyIndent}final Double value = ${pathReference}.getDouble(this);\n${bodyIndent}return value == null ? 0d : value;`
+    case 'Double':
+      return `${bodyIndent}return ${pathReference}.getDouble(this);`
+    case 'boolean':
+      return `${bodyIndent}final Boolean value = ${pathReference}.getBoolean(this);\n${bodyIndent}return value != null && value;`
+    case 'Boolean':
+      return `${bodyIndent}return ${pathReference}.getBoolean(this);`
+    case 'BigInteger':
+      return `${bodyIndent}return ${pathReference}.getBigInteger(this);`
+    case 'BigDecimal':
+      return `${bodyIndent}return ${pathReference}.getBigDecimal(this);`
+    case 'JsonObject':
+      return `${bodyIndent}return ${pathReference}.getJsonObject(this);`
+    case 'Map<String, Object>':
+      return `${bodyIndent}return ${pathReference}.getMap(this);`
+    case 'LocalDate':
+      return `${bodyIndent}return ${pathReference}.get(this, LocalDate.class);`
+    case 'LocalDateTime':
+      return `${bodyIndent}return ${pathReference}.get(this, LocalDateTime.class);`
+    case 'OffsetDateTime':
+      return `${bodyIndent}return ${pathReference}.get(this, OffsetDateTime.class);`
+    case 'Instant':
+      return `${bodyIndent}return ${pathReference}.get(this, Instant.class);`
+    default:
+      if (typeName.startsWith('List<')) {
+        const itemType = typeName.slice(5, -1)
+        if (!itemType.includes('<') && itemType !== 'Map<String, Object>') {
+          return `${bodyIndent}return ${pathReference}.getList(this, ${itemType}.class);`
+        }
+        return `${bodyIndent}return (${typeName}) ${pathReference}.getList(this);`
+      }
+      return `${bodyIndent}return ${pathReference}.get(this, ${typeName}.class);`
+  }
 }
 
 function addImportsForResolvedType(typeName: string, imports: Set<string>) {
@@ -480,8 +585,14 @@ function resolveFieldType(
   }
 
   if (shouldMaterializeObjectClass(node)) {
+    const objectMode = getObjectModeForSchema(node, generatorOptions, fieldOverrides[propertyPath]?.javaType)
+    if (objectMode === 'jsonObject') {
+      addImportsForResolvedType('JsonObject', imports)
+      return 'JsonObject'
+    }
+
     const className = resolveClassName(node, fallbackName)
-    nestedClassBlocks.push(renderClass(node, className, generatorOptions, imports, fieldOverrides, propertyPath, indentLevel, false))
+    nestedClassBlocks.push(renderClass(node, className, generatorOptions, imports, fieldOverrides, propertyPath, indentLevel, false, objectMode))
     return className
   }
 
@@ -520,6 +631,7 @@ function renderClass(
   objectPath: string,
   indentLevel: number,
   isRoot: boolean,
+  objectModeOverride?: 'jojo' | 'pojo',
 ): string {
   const indent = getIndent(indentLevel)
   const memberIndent = getIndent(indentLevel + 1)
@@ -527,19 +639,22 @@ function renderClass(
   const required = new Set(schema.required || [])
   const nestedClassBlocks: string[] = []
   const nestedEnumBlocks: string[] = []
+  const objectMode = objectModeOverride || getObjectModeForSchema(schema, generatorOptions, objectPath ? fieldOverrides[objectPath]?.javaType : undefined)
+  const rendersAsJojo = objectMode === 'jojo'
+  const disablesDynamicReads = shouldDisableDynamicReadsForObject(schema, generatorOptions, objectMode === 'jojo' ? 'JOJO' : 'POJO')
 
   if (generatorOptions.accessorMode === 'lombok') {
     imports.add('lombok.Data')
-    if (shouldRenderAsJojo(schema, generatorOptions)) {
+    if (rendersAsJojo) {
       imports.add('lombok.EqualsAndHashCode')
     }
   }
 
-  if (shouldRenderAsJojo(schema, generatorOptions)) {
+  if (rendersAsJojo) {
     imports.add('org.sjf4j.JsonObject')
   }
 
-  if (shouldDisableDynamicReads(schema, generatorOptions)) {
+  if (disablesDynamicReads) {
     imports.add('org.sjf4j.annotation.NodeBinding')
   }
 
@@ -571,7 +686,7 @@ function renderClass(
       indentLevel + 1,
     )
 
-    const memberConfig = resolveMemberKind(required.has(propertyName), schema, generatorOptions, fieldOverrides[propertyPath])
+    const memberConfig = resolveMemberKind(required.has(propertyName), schema, generatorOptions, fieldOverrides[propertyPath], objectMode === 'jojo' ? 'JOJO' : 'POJO')
 
     if (generatorOptions.useValidation && required.has(propertyName)) {
       imports.add(`${generatorOptions.validationNamespace}.validation.constraints.NotNull`)
@@ -588,16 +703,16 @@ function renderClass(
     } satisfies RenderedField
   })
 
-  const classDocs = renderClassJavaDoc(schema, generatorOptions, indentLevel)
+  const classDocs = renderClassJavaDoc(schema, generatorOptions, indentLevel, isRoot)
   const annotationLines = [
-    shouldDisableDynamicReads(schema, generatorOptions) ? `${indent}@NodeBinding(readDynamic = false)` : '',
+    disablesDynamicReads ? `${indent}@NodeBinding(readDynamic = false)` : '',
     generatorOptions.accessorMode === 'lombok' ? `${indent}@Data` : '',
-    generatorOptions.accessorMode === 'lombok' && shouldRenderAsJojo(schema, generatorOptions)
+    generatorOptions.accessorMode === 'lombok' && rendersAsJojo
       ? `${indent}@EqualsAndHashCode(callSuper = true)`
       : '',
   ].filter(Boolean).join('\n')
 
-  const classHeader = `${indent}${isRoot ? 'public' : 'public static'} class ${className}${shouldRenderAsJojo(schema, generatorOptions) ? ' extends JsonObject' : ''} {`
+  const classHeader = `${indent}${isRoot ? 'public' : 'public static'} class ${className}${rendersAsJojo ? ' extends JsonObject' : ''} {`
 
   const fieldMembers = renderedFields
     .filter((field) => field.memberKind === 'field')
@@ -631,9 +746,9 @@ function renderClass(
 
   const pathAccessorBlock = isRoot
     ? renderPathAccessorBlock(schema, generatorOptions, imports, fieldOverrides, indentLevel)
-    : ''
+    : { constants: '', methods: '' }
 
-  const memberSections = [fieldMembers, fieldAccessorBlock, propertyAccessorBlock, pathAccessorBlock, nestedEnumBlocks.join('\n\n'), nestedClassBlocks.join('\n\n')]
+  const memberSections = [fieldMembers, fieldAccessorBlock, propertyAccessorBlock, pathAccessorBlock.constants, pathAccessorBlock.methods, nestedEnumBlocks.join('\n\n'), nestedClassBlocks.join('\n\n')]
     .filter(Boolean)
 
   if (memberSections.length === 0) {

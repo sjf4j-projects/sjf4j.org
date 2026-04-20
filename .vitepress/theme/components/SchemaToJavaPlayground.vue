@@ -588,7 +588,7 @@ function downloadOutput() {
 
             <p class="generator-field-card-type">{{ field.schemaType }}</p>
 
-            <div class="generator-field-card-row">
+            <div v-if="field.memberConfigAllowed" class="generator-field-card-row">
               <label class="generator-field-card-control">
                 <select :value="field.memberKind" @change="handleFieldMemberKindChange(field.path, $event)">
                   <option value="field">Field</option>

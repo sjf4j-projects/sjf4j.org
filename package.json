@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/sjf4j-projects/sjf4j-org#readme",
   "devDependencies": {
+    "esbuild": "^0.28.0",
     "mermaid": "^11.12.3",
     "vitepress": "^1.6.4",
     "vitepress-plugin-mermaid": "^2.0.17",

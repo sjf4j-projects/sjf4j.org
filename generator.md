@@ -55,10 +55,11 @@ pageClass: generator-page
 
 ### 4. JSON shape in JavaDoc
 
-- Every generated class includes a simplified `JSON shape` block in JavaDoc.
+- Every generated root class includes a simplified `JSON shape` block in JavaDoc.
 - The JSON shape describes payload structure, not full schema semantics.
 - It includes object nesting, arrays, primitive kinds, string formats, and string-enum summaries.
 - It intentionally omits validation details, `required`, `allOf`, `$ref`, and other schema-level metadata.
+- Nested inner classes do not repeat the `JSON shape` block in the current baseline.
 
 ### 5. Modeling strategy
 
@@ -79,12 +80,15 @@ pageClass: generator-page
 - For `List<T>` properties, getter generation prefers `getList(key, T.class)` when `T` is a concrete non-generic item type; for complex generic item types it falls back to `getList(key)`.
 - `property` generation always emits explicit getter/setter methods, even when `accessorMode = lombok` or `accessorMode = none`.
 - Per-property settings in **Parsed Properties** override the global field-generation strategy.
+- For nested object properties with their own `properties`, the parsed-property type selector defaults to `JOJO` or `POJO` according to the effective modeling strategy.
+- If such a nested object property is changed to `JsonObject`, the nested class is not generated and descendant members no longer expose field/property configuration; only eligible root-level by-path getter/setter configuration remains.
 
 ### 7. Path accessor generation
 
 - Path accessors are generated only on the root class.
 - Root direct members do not generate path accessors.
-- Path accessors are implemented with `JsonObject` `*ByPath` APIs and `putByPath(path, value)`; precompiled `JsonPath` constants are not generated in the current baseline.
+- Path accessors without index parameters use precompiled `static final JsonPath` constants via `JsonPath.compile(...)` on the root class.
+- Path accessors with one or more index parameters continue to use `JsonObject` `*ByPath` APIs and `putByPath(path, value)` directly.
 - Getter generation prefers dedicated `*ByPath` APIs when available; otherwise it falls back to typed access such as `getByPath(path, LocalDateTime.class)`.
 - For `List<T>` path accessors, getter generation prefers `getListByPath(path, T.class)` when `T` is a concrete non-generic item type; for complex generic item types it falls back to `getListByPath(path)`.
 - Eligible descendant paths use flattened method names such as `getCustomerEmail()` and `setCustomerEmail(String value)`.

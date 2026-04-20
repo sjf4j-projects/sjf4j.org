@@ -57,12 +57,39 @@ describe('generator core smoke', () => {
 
     const fields = buildParsedFieldList(parsed.schema, createDefaultGeneratorOptions())
 
-    expect(fields.map((field) => [field.path, field.displayPath, field.required, field.javaType])).toEqual([
-      ['/customer', '$.customer', true, 'JsonObject'],
-      ['/customer/email', '$.customer.email', true, 'String'],
-      ['/items', '$.items', true, 'List<Map<String, Object>>'],
-      ['/items/0', '$.items[*]', false, 'JsonObject'],
-      ['/items/0/sku', '$.items[*].sku', true, 'String'],
+    expect(fields.map((field) => [field.path, field.displayPath, field.required, field.javaType, field.memberConfigAllowed])).toEqual([
+      ['/customer', '$.customer', true, 'JOJO', true],
+      ['/customer/email', '$.customer.email', true, 'String', true],
+      ['/items', '$.items', true, 'List<Map<String, Object>>', true],
+      ['/items/0', '$.items[*]', false, 'JOJO', true],
+      ['/items/0/sku', '$.items[*].sku', true, 'String', true],
     ])
+  })
+
+  it('hides descendant member configuration when a nested object is overridden to JsonObject', () => {
+    const parsed = parseSchemaText(`{
+      "title": "Order",
+      "type": "object",
+      "properties": {
+        "customer": {
+          "type": "object",
+          "properties": {
+            "email": { "type": "string" }
+          }
+        }
+      }
+    }`)
+
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) {
+      return
+    }
+
+    const fields = buildParsedFieldList(parsed.schema, createDefaultGeneratorOptions(), {
+      '/customer': { memberKind: 'field', javaType: 'JsonObject' },
+    })
+
+    expect(fields.find((field) => field.path === '/customer')?.javaType).toBe('JsonObject')
+    expect(fields.find((field) => field.path === '/customer/email')?.memberConfigAllowed).toBe(false)
   })
 })

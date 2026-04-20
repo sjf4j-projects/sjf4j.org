@@ -1,3 +1,4 @@
+import { getEffectiveObjectMode } from './memberKind'
 import { toPascalCase } from './naming'
 import type {
   GeneratorOptions,
@@ -187,6 +188,9 @@ export function getDefaultTypeOption(node: SchemaNode | undefined, path: string,
     case 'boolean':
       return generatorOptions.booleanMapping
     case 'object':
+      if (node?.properties) {
+        return getEffectiveObjectMode(node, generatorOptions) === 'jojo' ? 'JOJO' : 'POJO'
+      }
       return getObjectLeafTypeLabel(generatorOptions.objectLeafMapping)
     default:
       return mapSchemaType(node, generatorOptions.useBigDecimal).typeName
@@ -222,7 +226,9 @@ export function getTypeOptions(node: SchemaNode | undefined, path: string, gener
         optionsForType = ['boolean', 'Boolean']
         break
       case 'object':
-        optionsForType = ['JsonObject', 'Map<String, Object>', 'JOJO']
+        optionsForType = node?.properties
+          ? ['JOJO', 'POJO', 'JsonObject']
+          : ['JsonObject', 'Map<String, Object>', 'JOJO']
         break
       default:
         optionsForType = [mapSchemaType(node, generatorOptions.useBigDecimal).typeName]

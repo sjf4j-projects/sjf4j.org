@@ -88,7 +88,8 @@ describe('generator enum mapping', () => {
     expect(code).toContain('public TierEnum getTier() {')
     expect(code).toContain('return get("tier", TierEnum.class);')
     expect(code).toContain('public TierEnum getCustomerTier() {')
-    expect(code).toContain('return getByPath("$.customer.tier", TierEnum.class);')
+    expect(code).toContain('private static final JsonPath PATH_CUSTOMER_TIER = JsonPath.compile("$.customer.tier");')
+    expect(code).toContain('return PATH_CUSTOMER_TIER.get(this, TierEnum.class);')
   })
 
   it('keeps plainString mode without generating nested enums', () => {

@@ -5,7 +5,7 @@ import {
   getTypeOptions,
   toJsonPath,
 } from './mapping'
-import { getParentPath, getSchemaNodeAtPath, resolveMemberKind } from './memberKind'
+import { getEffectiveObjectMode, getParentPath, getSchemaNodeAtPath, resolveMemberKind } from './memberKind'
 import { renderJava } from './renderJava'
 import type {
   FieldOverride,
@@ -39,6 +39,24 @@ export function buildParsedFieldList(
   options: GeneratorOptions,
   fieldOverrides: Record<string, FieldOverride> = {},
 ): ParsedFieldDescriptor[] {
+  function isMemberConfigAllowed(path: string): boolean {
+    const segments = path.split('/').filter(Boolean)
+
+    for (let length = segments.length - 1; length > 0; length -= 1) {
+      const ancestorPath = `/${segments.slice(0, length).join('/')}`
+      const ancestorSchema = getSchemaNodeAtPath(schema, ancestorPath)
+      if (!ancestorSchema?.properties) {
+        continue
+      }
+
+      if (getEffectiveObjectMode(ancestorSchema, options, fieldOverrides[ancestorPath]?.javaType) === 'jsonObject') {
+        return false
+      }
+    }
+
+    return true
+  }
+
   return collectSchemaFields(schema, options.useBigDecimal)
     .filter((field) => field.path !== '')
     .map((field) => {
@@ -47,7 +65,15 @@ export function buildParsedFieldList(
       const defaultPathAccessors = getDefaultAccessors(field.required, options)
       const resolvedJavaType = override.javaType || defaultJavaType
       const ownerSchema = getSchemaNodeAtPath(schema, getParentPath(field.path)) || schema
-      const memberKind = resolveMemberKind(field.required, ownerSchema, options, override)
+      const ownerPath = getParentPath(field.path)
+      const memberConfigAllowed = isMemberConfigAllowed(field.path)
+      const memberKind = resolveMemberKind(
+        field.required,
+        ownerSchema,
+        options,
+        override,
+        ownerPath ? fieldOverrides[ownerPath]?.javaType : undefined,
+      )
 
       return {
         path: field.path,
@@ -55,8 +81,9 @@ export function buildParsedFieldList(
         javaType: resolvedJavaType,
         schemaType: field.schemaType,
         required: field.required,
-        memberKind: memberKind.memberKind,
-        propertyAllowed: memberKind.propertyAllowed,
+        memberConfigAllowed,
+        memberKind: memberConfigAllowed ? memberKind.memberKind : 'field',
+        propertyAllowed: memberConfigAllowed ? memberKind.propertyAllowed : false,
         pathAccessors: override.pathAccessors || defaultPathAccessors,
         typeOptions: Array.from(new Set([resolvedJavaType, ...getTypeOptions(field.node, field.path, options)])),
       }

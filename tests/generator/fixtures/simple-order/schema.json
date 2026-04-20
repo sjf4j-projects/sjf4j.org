@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Order",
+  "description": "Checkout order created by the storefront.",
+  "type": "object",
+  "required": ["id", "amount", "createdAt"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Business order identifier."
+    },
+    "amount": {
+      "type": "number",
+      "description": "Total amount in the settlement currency."
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "paid": {
+      "type": "boolean"
+    }
+  }
+}

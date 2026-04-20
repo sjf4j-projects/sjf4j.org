@@ -1,58 +1,18 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-
-type ValidationNamespace = 'jakarta' | 'javax'
-type ValidationAnnotation = '@NotNull' | '@Size' | '@Min' | '@Max' | '@Pattern'
-type BooleanMapping = 'boolean' | 'Boolean'
-type DateTimeMapping = 'OffsetDateTime' | 'LocalDateTime' | 'Instant' | 'plainString'
-type EnumMapping = 'javaEnum' | 'plainString'
-type JavaDocGenerationMode = 'description' | 'title' | 'none'
-type AccessorMode = 'lombok' | 'methods' | 'none'
-type IntegerMapping = 'int' | 'Integer' | 'long' | 'Long' | 'BitInteger'
-type ModelingStrategy = 'jojo' | 'pojo'
-type NumberMapping = 'double' | 'Double' | 'BigDecimal' | 'int' | 'long'
-type ObjectLeafMapping = 'jsonObject' | 'mapObject' | 'jojo'
-type PathAccessMode = 'getterSetter' | 'pathGetterSetter'
-type FieldStrategy = 'all' | 'required' | 'none'
-type PathAccessorStrategy = 'all' | 'required' | 'none'
-type FieldMemberKind = 'field' | 'property'
-
-type FieldOverride = {
-  memberKind: FieldMemberKind
-  javaType?: string
-  pathAccessors?: PathAccessMode[]
-}
-
-type GeneratorOptions = {
-  packageName: string
-  className: string
-  booleanMapping: BooleanMapping
-  dateTimeMapping: DateTimeMapping
-  enumMapping: EnumMapping
-  integerMapping: IntegerMapping
-  modelingStrategy: ModelingStrategy
-  numberMapping: NumberMapping
-  objectLeafMapping: ObjectLeafMapping
-  fieldStrategy: FieldStrategy
-  accessorMode: AccessorMode
-  pathAccessorStrategy: PathAccessorStrategy
-  useValidation: boolean
-  validationAnnotations: ValidationAnnotation[]
-  validationNamespace: ValidationNamespace
-  javaDocGeneration: JavaDocGenerationMode
-  useBigDecimal: boolean
-}
-
-type SchemaNode = {
-  title?: string
-  description?: string
-  enum?: unknown[]
-  type?: string | string[]
-  format?: string
-  properties?: Record<string, SchemaNode>
-  items?: SchemaNode
-  required?: string[]
-}
+import {
+  buildParsedFieldList,
+  createDefaultGeneratorOptions,
+  generateJavaOutput,
+  parseSchemaText,
+  resolveClassName,
+  shouldRenderAsJojo,
+  validationAnnotationOptions,
+  type FieldMemberKind,
+  type FieldOverride,
+  type GeneratorOptions,
+  type ValidationAnnotation,
+} from '../generator/core'
 
 const exampleSchema = `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -106,32 +66,8 @@ const exampleSchema = `{
   }
 }`
 
-const validationAnnotationOptions: ValidationAnnotation[] = ['@NotNull', '@Size', '@Min', '@Max', '@Pattern']
-const pathAccessModeOptions: Array<{ value: PathAccessMode; label: string }> = [
-  { value: 'getterSetter', label: 'Getter/Setter' },
-  { value: 'pathGetterSetter', label: 'Path getter/setter' },
-]
-
 const schemaInput = ref(exampleSchema)
-const options = ref<GeneratorOptions>({
-  packageName: 'org.example.generated',
-  className: '',
-  booleanMapping: 'boolean',
-  dateTimeMapping: 'OffsetDateTime',
-  enumMapping: 'javaEnum',
-  integerMapping: 'int',
-  modelingStrategy: 'jojo',
-  numberMapping: 'double',
-  objectLeafMapping: 'jsonObject',
-  fieldStrategy: 'all',
-  accessorMode: 'lombok',
-  pathAccessorStrategy: 'required',
-  useValidation: true,
-  validationAnnotations: [...validationAnnotationOptions],
-  validationNamespace: 'jakarta',
-  javaDocGeneration: 'description',
-  useBigDecimal: true,
-})
+const options = ref<GeneratorOptions>(createDefaultGeneratorOptions())
 const toastMessage = ref('')
 const copyButtonLabel = ref('Copy')
 const inputHighlightRef = ref<HTMLElement | null>(null)
@@ -188,36 +124,6 @@ onBeforeUnmount(() => {
   document.removeEventListener('keydown', handleDocumentKeydown)
 })
 
-function detectObject(input: unknown): SchemaNode {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new Error('Top-level schema must be a JSON object.')
-  }
-  return input as SchemaNode
-}
-
-function toPascalCase(value: string): string {
-  const normalized = value
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/[^a-zA-Z0-9]+/g, ' ')
-    .trim()
-
-  const words = normalized.split(/\s+/).filter(Boolean)
-  const result = words
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join('')
-
-  return result || 'GeneratedType'
-}
-
-function toCamelCase(value: string): string {
-  const pascal = toPascalCase(value)
-  return pascal.charAt(0).toLowerCase() + pascal.slice(1)
-}
-
-function escapeJavaDoc(value: string): string {
-  return value.replace(/\*\//g, '*\\/')
-}
-
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -262,341 +168,11 @@ function highlightJson(code: string): string {
     .replace(/\b(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\b/g, '<span class="token-json-number">$1</span>')
 }
 
-function mapSchemaType(node: SchemaNode | undefined, useBigDecimal: boolean): { typeName: string; imports: string[] } {
-  const declared = Array.isArray(node?.type)
-    ? node?.type.find((entry) => entry !== 'null')
-    : node?.type
+const parsedSchemaState = computed(() => parseSchemaText(schemaInput.value))
 
-  switch (declared) {
-    case 'string':
-      if (node?.format === 'date') {
-        return { typeName: 'LocalDate', imports: ['java.time.LocalDate'] }
-      }
-      if (node?.format === 'date-time') {
-        return { typeName: 'OffsetDateTime', imports: ['java.time.OffsetDateTime'] }
-      }
-      return { typeName: 'String', imports: [] }
-    case 'integer':
-      return { typeName: 'Long', imports: [] }
-    case 'number':
-      return useBigDecimal
-        ? { typeName: 'BigDecimal', imports: ['java.math.BigDecimal'] }
-        : { typeName: 'Double', imports: [] }
-    case 'boolean':
-      return { typeName: 'Boolean', imports: [] }
-    case 'array': {
-      const item = mapSchemaType(node?.items, useBigDecimal)
-      return {
-        typeName: `List<${item.typeName}>`,
-        imports: ['java.util.List', ...item.imports],
-      }
-    }
-    case 'object':
-      return { typeName: 'Map<String, Object>', imports: ['java.util.Map'] }
-    default:
-      return { typeName: 'Object', imports: [] }
-  }
-}
+const resolvedClassName = computed(() => resolveClassName(parsedSchemaState.value, options.value))
 
-function getDeclaredSchemaType(node: SchemaNode | undefined): string {
-  return Array.isArray(node?.type)
-    ? node?.type.find((entry) => entry !== 'null') || 'unknown'
-    : node?.type || 'unknown'
-}
-
-function schemaTypeLabel(node: SchemaNode | undefined): string {
-  const declared = Array.isArray(node?.type)
-    ? node.type.filter((entry) => entry !== 'null').join(' | ')
-    : node?.type || 'unknown'
-
-  if (declared === 'string' && node?.format) {
-    return `${declared} (${node.format})`
-  }
-
-  return declared
-}
-
-function collectSchemaFields(
-  node: SchemaNode | undefined,
-  useBigDecimal: boolean,
-  path = '',
-  required = false,
-): Array<{ path: string; javaType: string; schemaType: string; required: boolean; node: SchemaNode | undefined }> {
-  if (!node) {
-    return []
-  }
-
-  const typeLabel = schemaTypeLabel(node)
-  const mapped = mapSchemaType(node, useBigDecimal)
-  const fields = [{ path, javaType: mapped.typeName, schemaType: typeLabel, required, node }]
-
-  const declared = Array.isArray(node.type)
-    ? node.type.find((entry) => entry !== 'null')
-    : node.type
-
-  if (declared === 'object' && node.properties) {
-    const requiredSet = new Set(node.required || [])
-    return [
-      ...fields,
-      ...Object.entries(node.properties).flatMap(([name, child]) =>
-        collectSchemaFields(child, useBigDecimal, `${path}/${name}`, requiredSet.has(name)),
-      ),
-    ]
-  }
-
-  if (declared === 'array' && node.items) {
-    return [
-      ...fields,
-      ...collectSchemaFields(node.items, useBigDecimal, `${path}/0`, false),
-    ]
-  }
-
-  return fields
-}
-
-function getPathLeafName(path: string): string {
-  const segments = path.split('/').filter(Boolean)
-  const last = segments[segments.length - 1] || 'Value'
-  return /^\d+$/.test(last) ? `Index${last}` : last
-}
-
-function toJsonPath(path: string): string {
-  const segments = path.split('/').filter(Boolean)
-
-  if (segments.length === 0) {
-    return '$'
-  }
-
-  return segments.reduce((result, segment) => {
-    if (/^\d+$/.test(segment)) {
-      return `${result}[*]`
-    }
-
-    if (/^[A-Za-z_$][\w$]*$/.test(segment)) {
-      return `${result}.${segment}`
-    }
-
-    return `${result}["${segment.replace(/"/g, '\\"')}"]`
-  }, '$')
-}
-
-function getObjectLeafTypeLabel(mapping: ObjectLeafMapping): string {
-  switch (mapping) {
-    case 'jsonObject':
-      return 'JsonObject'
-    case 'mapObject':
-      return 'Map<String, Object>'
-    case 'jojo':
-      return 'JOJO'
-  }
-}
-
-function getDefaultTypeOption(node: SchemaNode | undefined, path: string, generatorOptions: GeneratorOptions): string {
-  const declared = getDeclaredSchemaType(node)
-
-  if (Array.isArray(node?.enum) && node.enum.length > 0) {
-    return generatorOptions.enumMapping === 'javaEnum'
-      ? `${toPascalCase(getPathLeafName(path))}Enum`
-      : 'String'
-  }
-
-  switch (declared) {
-    case 'string':
-      if (node?.format === 'date-time') {
-        return generatorOptions.dateTimeMapping === 'plainString'
-          ? 'String'
-          : generatorOptions.dateTimeMapping
-      }
-      if (node?.format === 'date') {
-        return 'LocalDate'
-      }
-      return 'String'
-    case 'integer':
-      return generatorOptions.integerMapping
-    case 'number':
-      return generatorOptions.numberMapping
-    case 'boolean':
-      return generatorOptions.booleanMapping
-    case 'object':
-      return getObjectLeafTypeLabel(generatorOptions.objectLeafMapping)
-    default:
-      return mapSchemaType(node, generatorOptions.useBigDecimal).typeName
-  }
-}
-
-function getTypeOptions(node: SchemaNode | undefined, path: string, generatorOptions: GeneratorOptions): string[] {
-  const declared = getDeclaredSchemaType(node)
-  const defaultOption = getDefaultTypeOption(node, path, generatorOptions)
-
-  let optionsForType: string[]
-
-  if (Array.isArray(node?.enum) && node.enum.length > 0) {
-    optionsForType = [`${toPascalCase(getPathLeafName(path))}Enum`, 'String']
-  } else {
-    switch (declared) {
-      case 'string':
-        if (node?.format === 'date-time') {
-          optionsForType = ['OffsetDateTime', 'LocalDateTime', 'Instant', 'String']
-        } else if (node?.format === 'date') {
-          optionsForType = ['LocalDate', 'String']
-        } else {
-          optionsForType = ['String']
-        }
-        break
-      case 'integer':
-        optionsForType = ['int', 'Integer', 'long', 'Long', 'BitInteger']
-        break
-      case 'number':
-        optionsForType = ['double', 'Double', 'BigDecimal', 'int', 'long']
-        break
-      case 'boolean':
-        optionsForType = ['boolean', 'Boolean']
-        break
-      case 'object':
-        optionsForType = ['JsonObject', 'Map<String, Object>', 'JOJO']
-        break
-      default:
-        optionsForType = [mapSchemaType(node, generatorOptions.useBigDecimal).typeName]
-        break
-    }
-  }
-
-  return Array.from(new Set([defaultOption, ...optionsForType]))
-}
-
-function getDefaultAccessors(required: boolean, generatorOptions: GeneratorOptions): PathAccessMode[] {
-  const accessors: PathAccessMode[] = []
-
-  if (generatorOptions.accessorMode !== 'none') {
-    accessors.push('getterSetter')
-  }
-
-  if (generatorOptions.pathAccessorStrategy === 'all') {
-    accessors.push('pathGetterSetter')
-  } else if (generatorOptions.pathAccessorStrategy === 'required' && required) {
-    accessors.push('pathGetterSetter')
-  }
-
-  return accessors
-}
-
-function renderJava(schema: SchemaNode, generatorOptions: GeneratorOptions): string {
-  const normalizedClassName = generatorOptions.className.trim()
-    ? toPascalCase(generatorOptions.className)
-    : toPascalCase(schema.title || 'GeneratedType')
-
-  const properties = schema.properties || {}
-  const required = new Set(schema.required || [])
-  const imports = new Set<string>()
-
-  const fields = Object.entries(properties).map(([propertyName, propertySchema]) => {
-    const mapped = mapSchemaType(propertySchema, generatorOptions.useBigDecimal)
-    mapped.imports.forEach((entry) => imports.add(entry))
-
-    if (generatorOptions.useValidation && required.has(propertyName)) {
-      imports.add(`${generatorOptions.validationNamespace}.validation.constraints.NotNull`)
-    }
-
-      return {
-        propertyName,
-        fieldName: toCamelCase(propertyName),
-        title: propertySchema.title,
-        description: propertySchema.description,
-        typeName: mapped.typeName,
-        required: required.has(propertyName),
-      }
-  })
-
-  if (generatorOptions.accessorMode === 'lombok') {
-    imports.add('lombok.AllArgsConstructor')
-    imports.add('lombok.Builder')
-    imports.add('lombok.Data')
-    imports.add('lombok.NoArgsConstructor')
-  }
-
-  const importBlock = Array.from(imports)
-    .sort((left, right) => left.localeCompare(right))
-    .map((entry) => `import ${entry};`)
-    .join('\n')
-
-  const packageLine = generatorOptions.packageName.trim()
-    ? `package ${generatorOptions.packageName.trim()};\n\n`
-    : ''
-
-  const classJavaDocText = generatorOptions.javaDocGeneration === 'description'
-    ? schema.description
-    : generatorOptions.javaDocGeneration === 'title'
-      ? schema.title
-      : ''
-
-  const classDocs = classJavaDocText
-    ? `/**\n * ${escapeJavaDoc(classJavaDocText)}\n */\n`
-    : ''
-
-  const classAnnotations = generatorOptions.accessorMode === 'lombok'
-    ? '@Data\n@Builder\n@NoArgsConstructor\n@AllArgsConstructor\n'
-    : ''
-
-  const fieldBlock = fields.length > 0
-    ? fields.map((field) => {
-      const fieldJavaDocText = generatorOptions.javaDocGeneration === 'description'
-        ? field.description
-        : generatorOptions.javaDocGeneration === 'title'
-          ? field.title
-          : ''
-
-      const javaDoc = fieldJavaDocText
-        ? `    /** ${escapeJavaDoc(fieldJavaDocText)} */\n`
-        : ''
-      const validation = generatorOptions.useValidation && field.required
-        ? '    @NotNull\n'
-        : ''
-
-      return `${javaDoc}${validation}    private ${field.typeName} ${field.fieldName};`
-    }).join('\n\n')
-    : '    // TODO: map schema properties into Java fields.'
-
-  const accessors = generatorOptions.accessorMode === 'methods' && fields.length > 0
-    ? `\n\n${fields.map((field) => {
-      const methodName = field.fieldName.charAt(0).toUpperCase() + field.fieldName.slice(1)
-      return `    public ${field.typeName} get${methodName}() {\n        return ${field.fieldName};\n    }\n\n    public void set${methodName}(${field.typeName} ${field.fieldName}) {\n        this.${field.fieldName} = ${field.fieldName};\n    }`
-    }).join('\n\n')}`
-    : ''
-
-  return `${packageLine}${importBlock ? `${importBlock}\n\n` : ''}${classDocs}${classAnnotations}public class ${normalizedClassName} {\n${fieldBlock}${accessors}\n}\n`
-}
-
-const parsedSchema = computed(() => {
-  try {
-    return detectObject(JSON.parse(schemaInput.value))
-  } catch (error) {
-    return error instanceof Error ? error.message : 'Invalid JSON input.'
-  }
-})
-
-const resolvedClassName = computed(() => {
-  if (typeof parsedSchema.value === 'string') {
-    return toPascalCase(options.value.className || 'GeneratedType')
-  }
-
-  return options.value.className.trim()
-    ? toPascalCase(options.value.className)
-    : toPascalCase(parsedSchema.value.title || 'GeneratedType')
-})
-
-const generatedOutput = computed(() => {
-  if (typeof parsedSchema.value === 'string') {
-    return {
-      code: '',
-      error: parsedSchema.value,
-    }
-  }
-
-  return {
-    code: renderJava(parsedSchema.value, options.value),
-    error: '',
-  }
-})
+const generatedOutput = computed(() => generateJavaOutput(parsedSchemaState.value, options.value, fieldOverrides.value))
 
 const schemaStats = computed(() => {
   const lines = schemaInput.value.split('\n').length
@@ -634,29 +210,11 @@ const validationAnnotationsLabel = computed(() => {
 })
 
 const parsedFieldList = computed(() => {
-  if (typeof parsedSchema.value === 'string') {
+  if (!parsedSchemaState.value.ok) {
     return []
   }
 
-  return collectSchemaFields(parsedSchema.value, options.value.useBigDecimal)
-    .filter((field) => field.path !== '')
-    .map((field) => {
-      const defaultJavaType = getDefaultTypeOption(field.node, field.path, options.value)
-      const override = fieldOverrides.value[field.path] || {}
-      const defaultPathAccessors = getDefaultAccessors(field.required, options.value)
-      const resolvedJavaType = override.javaType || defaultJavaType
-
-      return {
-        path: field.path,
-        displayPath: toJsonPath(field.path),
-        javaType: resolvedJavaType,
-        schemaType: field.schemaType,
-        required: field.required,
-        memberKind: override.memberKind || 'field',
-        pathAccessors: override.pathAccessors || defaultPathAccessors,
-        typeOptions: Array.from(new Set([resolvedJavaType, ...getTypeOptions(field.node, field.path, options.value)])),
-      }
-    })
+  return buildParsedFieldList(parsedSchemaState.value.schema, options.value, fieldOverrides.value)
 })
 
 const highlightedInput = computed(() => highlightJson(schemaInput.value))
@@ -712,11 +270,20 @@ function handleFieldTypeChange(name: string, event: Event) {
   updateFieldType(name, (event.target as HTMLSelectElement).value)
 }
 
-function toggleFieldPathAccess(name: string, mode: PathAccessMode) {
+function canTogglePathAccessor(path: string) {
+  if (!parsedSchemaState.value.ok) {
+    return false
+  }
+
+  return shouldRenderAsJojo(parsedSchemaState.value.schema, options.value)
+    && path.split('/').filter(Boolean).length > 1
+}
+
+function toggleFieldPathAccessor(name: string) {
   const current = fieldOverrides.value[name]?.pathAccessors || []
-  const pathAccessors = current.includes(mode)
-    ? current.filter((entry) => entry !== mode)
-    : [...current, mode]
+  const pathAccessors = current.includes('pathGetterSetter')
+    ? current.filter((entry) => entry !== 'pathGetterSetter')
+    : [...current, 'pathGetterSetter']
 
   fieldOverrides.value = {
     ...fieldOverrides.value,
@@ -747,25 +314,7 @@ function formatInput() {
 }
 
 function resetOptions() {
-  options.value = {
-    packageName: 'org.example.generated',
-    className: '',
-    booleanMapping: 'boolean',
-    dateTimeMapping: 'OffsetDateTime',
-    enumMapping: 'javaEnum',
-    integerMapping: 'int',
-    modelingStrategy: 'jojo',
-    numberMapping: 'double',
-    objectLeafMapping: 'jsonObject',
-    fieldStrategy: 'all',
-    accessorMode: 'lombok',
-    pathAccessorStrategy: 'required',
-    useValidation: true,
-    validationAnnotations: [...validationAnnotationOptions],
-    validationNamespace: 'jakarta',
-    javaDocGeneration: 'description',
-    useBigDecimal: true,
-  }
+  options.value = createDefaultGeneratorOptions()
   fieldOverrides.value = {}
   showToast('Generator options reset.')
 }
@@ -888,7 +437,7 @@ function downloadOutput() {
             <option value="Integer">Integer</option>
             <option value="long">long</option>
             <option value="Long">Long</option>
-            <option value="BitInteger">BitInteger</option>
+            <option value="BigInteger">BigInteger</option>
           </select>
         </label>
 
@@ -1043,7 +592,7 @@ function downloadOutput() {
               <label class="generator-field-card-control">
                 <select :value="field.memberKind" @change="handleFieldMemberKindChange(field.path, $event)">
                   <option value="field">Field</option>
-                  <option value="property">Property</option>
+                  <option value="property" :disabled="!field.propertyAllowed">Property</option>
                 </select>
               </label>
 
@@ -1054,17 +603,15 @@ function downloadOutput() {
               </label>
             </div>
 
-            <div class="generator-field-card-control">
+            <div v-if="canTogglePathAccessor(field.path)" class="generator-field-card-control">
               <div class="generator-field-card-chip-group">
                 <button
-                  v-for="mode in pathAccessModeOptions"
-                  :key="mode.value"
                   type="button"
                   class="generator-field-card-chip"
-                  :class="{ 'is-selected': field.pathAccessors.includes(mode.value) }"
-                  @click="toggleFieldPathAccess(field.path, mode.value)"
+                  :class="{ 'is-selected': field.pathAccessors.includes('pathGetterSetter') }"
+                  @click="toggleFieldPathAccessor(field.path)"
                 >
-                  {{ mode.label }}
+                  By-path getter/setter
                 </button>
               </div>
             </div>

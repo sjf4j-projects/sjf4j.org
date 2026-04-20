@@ -1,0 +1,19 @@
+{
+  "packageName": "org.example.generated",
+  "className": "",
+  "booleanMapping": "boolean",
+  "dateTimeMapping": "OffsetDateTime",
+  "enumMapping": "javaEnum",
+  "integerMapping": "int",
+  "modelingStrategy": "jojo",
+  "numberMapping": "double",
+  "objectLeafMapping": "jsonObject",
+  "fieldStrategy": "all",
+  "accessorMode": "lombok",
+  "pathAccessorStrategy": "required",
+  "useValidation": true,
+  "validationAnnotations": ["@NotNull", "@Size", "@Min", "@Max", "@Pattern"],
+  "validationNamespace": "jakarta",
+  "javaDocGeneration": "description",
+  "useBigDecimal": true
+}

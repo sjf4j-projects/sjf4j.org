@@ -2,6 +2,10 @@ import type { FieldMemberKind, FieldOverride, GeneratorOptions, SchemaNode } fro
 
 export type ObjectMode = 'jojo' | 'pojo' | 'jsonObject'
 
+export function isPathOnlyMode(generatorOptions: GeneratorOptions): boolean {
+  return generatorOptions.modelingStrategy === 'pathOnly'
+}
+
 function getDeclaredType(schema: SchemaNode | undefined): string {
   return Array.isArray(schema?.type)
     ? schema?.type.find((entry) => entry !== 'null') || 'unknown'
@@ -13,7 +17,9 @@ export function allowsAdditionalProperties(schema: SchemaNode): boolean {
 }
 
 export function shouldRenderAsJojo(schema: SchemaNode, generatorOptions: GeneratorOptions): boolean {
-  return allowsAdditionalProperties(schema) || generatorOptions.modelingStrategy === 'jojo'
+  return allowsAdditionalProperties(schema)
+    || generatorOptions.modelingStrategy === 'jojo'
+    || generatorOptions.modelingStrategy === 'pathOnly'
 }
 
 export function getEffectiveObjectMode(
@@ -37,7 +43,8 @@ export function getEffectiveObjectMode(
 }
 
 export function shouldDisableDynamicReads(schema: SchemaNode, generatorOptions: GeneratorOptions): boolean {
-  return schema.additionalProperties === false && generatorOptions.modelingStrategy === 'jojo'
+  return schema.additionalProperties === false
+    && (generatorOptions.modelingStrategy === 'jojo' || generatorOptions.modelingStrategy === 'pathOnly')
 }
 
 export function getParentPath(path: string): string {

@@ -134,4 +134,36 @@ describe('generator enum mapping', () => {
     expect(code).toContain('return getList("statuses", StatusesItemEnum.class);')
     expect(code).toContain('public enum StatusesItemEnum {')
   })
+
+  it('hoists descendant enums to the root class in pathOnly mode', () => {
+    const code = generate(`{
+      "title": "Order",
+      "type": "object",
+      "properties": {
+        "customer": {
+          "type": "object",
+          "properties": {
+            "tier": {
+              "type": "string",
+              "enum": ["vip", "normal"]
+            }
+          }
+        }
+      }
+    }`, {
+      accessorMode: 'none',
+      fieldStrategy: 'none',
+      pathAccessorStrategy: 'all',
+      enumMapping: 'javaEnum',
+      modelingStrategy: 'pathOnly',
+    })
+
+    expect(code).toContain('public JsonObject getCustomer() {')
+    expect(code).toContain('return getJsonObject("customer");')
+    expect(code).toContain('public CustomerTierEnum getCustomerTier() {')
+    expect(code).toContain('return PATH_CUSTOMER_TIER.get(this, CustomerTierEnum.class);')
+    expect(code).toContain('public enum CustomerTierEnum {')
+    expect(code).not.toContain('public static class Customer')
+    expect(code).not.toContain('public enum TierEnum {')
+  })
 })

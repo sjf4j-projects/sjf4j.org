@@ -1,4 +1,4 @@
-import { getEffectiveObjectMode } from './memberKind'
+import { getEffectiveObjectMode, isPathOnlyMode } from './memberKind'
 import { toPascalCase } from './naming'
 import type {
   GeneratorOptions,
@@ -21,8 +21,35 @@ export function isStringEnumSchema(node: SchemaNode | undefined): boolean {
     && node.enum.every((value) => typeof value === 'string')
 }
 
-export function getEnumTypeName(path: string): string {
-  const segments = path.split('/').filter(Boolean)
+function getPathSegments(path: string): string[] {
+  return path.split('/').filter(Boolean)
+}
+
+function isRootDirectPath(path: string): boolean {
+  return getPathSegments(path).length === 1
+}
+
+function isNonRootPath(path: string): boolean {
+  return getPathSegments(path).length > 0
+}
+
+function isObjectArraySchema(node: SchemaNode | undefined): boolean {
+  return getDeclaredSchemaType(node) === 'array' && !!node?.items?.properties && getDeclaredSchemaType(node.items) === 'object'
+}
+
+export function getEnumTypeName(path: string, flattened = false): string {
+  const segments = getPathSegments(path)
+
+  if (flattened) {
+    const namedSegments = segments.filter((segment) => !/^\d+$/.test(segment))
+
+    if (namedSegments.length === 0) {
+      return 'ValueEnum'
+    }
+
+    return `${namedSegments.map((segment) => toPascalCase(segment)).join('')}Enum`
+  }
+
   const last = segments[segments.length - 1]
 
   if (!last) {
@@ -163,10 +190,11 @@ export function getObjectLeafTypeLabel(mapping: ObjectLeafMapping): string {
 
 export function getDefaultTypeOption(node: SchemaNode | undefined, path: string, generatorOptions: GeneratorOptions): string {
   const declared = getDeclaredSchemaType(node)
+  const pathOnly = isPathOnlyMode(generatorOptions)
 
   if (isStringEnumSchema(node)) {
     return generatorOptions.enumMapping === 'javaEnum'
-      ? getEnumTypeName(path)
+      ? getEnumTypeName(path, pathOnly && !isRootDirectPath(path))
       : 'String'
   }
 
@@ -187,8 +215,16 @@ export function getDefaultTypeOption(node: SchemaNode | undefined, path: string,
       return generatorOptions.numberMapping
     case 'boolean':
       return generatorOptions.booleanMapping
+    case 'array':
+      if (pathOnly && isNonRootPath(path) && isObjectArraySchema(node)) {
+        return 'List<JsonObject>'
+      }
+      return mapSchemaType(node, generatorOptions.useBigDecimal).typeName
     case 'object':
       if (node?.properties) {
+        if (pathOnly && isNonRootPath(path)) {
+          return 'JsonObject'
+        }
         return getEffectiveObjectMode(node, generatorOptions) === 'jojo' ? 'JOJO' : 'POJO'
       }
       return getObjectLeafTypeLabel(generatorOptions.objectLeafMapping)
@@ -200,11 +236,12 @@ export function getDefaultTypeOption(node: SchemaNode | undefined, path: string,
 export function getTypeOptions(node: SchemaNode | undefined, path: string, generatorOptions: GeneratorOptions): string[] {
   const declared = getDeclaredSchemaType(node)
   const defaultOption = getDefaultTypeOption(node, path, generatorOptions)
+  const pathOnly = isPathOnlyMode(generatorOptions)
 
   let optionsForType: string[]
 
   if (isStringEnumSchema(node)) {
-    optionsForType = [getEnumTypeName(path), 'String']
+    optionsForType = [getEnumTypeName(path, pathOnly && !isRootDirectPath(path)), 'String']
   } else {
     switch (declared) {
       case 'string':
@@ -225,9 +262,14 @@ export function getTypeOptions(node: SchemaNode | undefined, path: string, gener
       case 'boolean':
         optionsForType = ['boolean', 'Boolean']
         break
+      case 'array':
+        optionsForType = pathOnly && isNonRootPath(path) && isObjectArraySchema(node)
+          ? ['List<JsonObject>']
+          : [mapSchemaType(node, generatorOptions.useBigDecimal).typeName]
+        break
       case 'object':
         optionsForType = node?.properties
-          ? ['JOJO', 'POJO', 'JsonObject']
+          ? (pathOnly && isNonRootPath(path) ? ['JsonObject'] : ['JOJO', 'POJO', 'JsonObject'])
           : ['JsonObject', 'Map<String, Object>', 'JOJO']
         break
       default:

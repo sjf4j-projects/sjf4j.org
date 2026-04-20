@@ -380,6 +380,7 @@ function downloadOutput() {
           <select v-model="options.modelingStrategy">
             <option value="jojo">JOJO preferred</option>
             <option value="pojo">POJO preferred</option>
+            <option value="pathOnly">Path only (JsonObject preferred)</option>
           </select>
         </label>
 
@@ -588,15 +589,15 @@ function downloadOutput() {
 
             <p class="generator-field-card-type">{{ field.schemaType }}</p>
 
-            <div v-if="field.memberConfigAllowed" class="generator-field-card-row">
-              <label class="generator-field-card-control">
+            <div v-if="field.memberKindConfigAllowed || field.typeConfigAllowed" class="generator-field-card-row">
+              <label v-if="field.memberKindConfigAllowed" class="generator-field-card-control">
                 <select :value="field.memberKind" @change="handleFieldMemberKindChange(field.path, $event)">
                   <option value="field">Field</option>
                   <option value="property" :disabled="!field.propertyAllowed">Property</option>
                 </select>
               </label>
 
-              <label class="generator-field-card-control">
+              <label v-if="field.typeConfigAllowed" class="generator-field-card-control">
                 <select :value="field.javaType" @change="handleFieldTypeChange(field.path, $event)">
                   <option v-for="typeOption in field.typeOptions" :key="typeOption" :value="typeOption">{{ typeOption }}</option>
                 </select>

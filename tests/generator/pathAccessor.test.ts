@@ -46,11 +46,12 @@ describe('generator path accessors', () => {
     expect(code).toContain('public String getCustomerEmail() {')
     expect(code).toContain('return PATH_CUSTOMER_EMAIL.getString(this);')
     expect(code).toContain('public void setCustomerEmail(String value) {')
-    expect(code).toContain('PATH_CUSTOMER_EMAIL.put(this, value);')
+    expect(code).toContain('PATH_CUSTOMER_EMAIL.ensurePut(this, value);')
     expect(code).toContain('public ItemsItem getItems(int itemsIndex) {')
     expect(code).toContain('return getByPath("$.items[" + itemsIndex + "]", ItemsItem.class);')
     expect(code).toContain('public String getItemsSku(int itemsIndex) {')
     expect(code).toContain('return getStringByPath("$.items[" + itemsIndex + "].sku");')
+    expect(code).toContain('ensurePutByPath("$.items[" + itemsIndex + "].sku", value);')
     expect(code).not.toContain('PATH_ITEMS_SKU')
   })
 
@@ -144,6 +145,48 @@ describe('generator path accessors', () => {
     })
 
     expect(code).not.toContain('getCustomerEmail()')
-    expect(code).not.toContain('putByPath(')
+    expect(code).not.toContain('ensurePutByPath(')
+  })
+
+  it('uses JsonObject path types in pathOnly mode', () => {
+    const code = generate(`{
+      "title": "Order",
+      "type": "object",
+      "properties": {
+        "customer": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "object",
+              "properties": {
+                "zip": { "type": "string" }
+              }
+            }
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sku": { "type": "string" }
+            }
+          }
+        }
+      }
+    }`, {
+      accessorMode: 'none',
+      pathAccessorStrategy: 'all',
+      modelingStrategy: 'pathOnly',
+    })
+
+    expect(code).toContain('private JsonObject customer;')
+    expect(code).toContain('private List<JsonObject> items;')
+    expect(code).toContain('public JsonObject getCustomerAddress() {')
+    expect(code).toContain('return PATH_CUSTOMER_ADDRESS.getJsonObject(this);')
+    expect(code).toContain('public JsonObject getItems(int itemsIndex) {')
+    expect(code).toContain('return getJsonObjectByPath("$.items[" + itemsIndex + "]");')
+    expect(code).toContain('public String getItemsSku(int itemsIndex) {')
+    expect(code).not.toContain('ItemsItem.class')
   })
 })

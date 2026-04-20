@@ -6,7 +6,7 @@ export type EnumMapping = 'javaEnum' | 'plainString'
 export type JavaDocGenerationMode = 'description' | 'title' | 'none'
 export type AccessorMode = 'lombok' | 'methods' | 'none'
 export type IntegerMapping = 'int' | 'Integer' | 'long' | 'Long' | 'BigInteger'
-export type ModelingStrategy = 'jojo' | 'pojo'
+export type ModelingStrategy = 'jojo' | 'pojo' | 'pathOnly'
 export type NumberMapping = 'double' | 'Double' | 'BigDecimal' | 'int' | 'long'
 export type ObjectLeafMapping = 'jsonObject' | 'mapObject' | 'jojo'
 export type PathAccessMode = 'getterSetter' | 'pathGetterSetter'
@@ -51,6 +51,13 @@ export type SchemaNode = {
   enum?: unknown[]
   type?: string | string[]
   format?: string
+  minLength?: number
+  maxLength?: number
+  minItems?: number
+  maxItems?: number
+  pattern?: string
+  minimum?: number
+  maximum?: number
   allOf?: SchemaNode[]
   additionalProperties?: boolean | SchemaNode
   properties?: Record<string, SchemaNode>
@@ -82,6 +89,8 @@ export type ParsedFieldDescriptor = {
   schemaType: string
   required: boolean
   memberConfigAllowed: boolean
+  memberKindConfigAllowed: boolean
+  typeConfigAllowed: boolean
   memberKind: FieldMemberKind
   propertyAllowed: boolean
   pathAccessors: PathAccessMode[]

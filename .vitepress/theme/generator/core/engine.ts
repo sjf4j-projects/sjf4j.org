@@ -5,7 +5,7 @@ import {
   getTypeOptions,
   toJsonPath,
 } from './mapping'
-import { getEffectiveObjectMode, getParentPath, getSchemaNodeAtPath, resolveMemberKind } from './memberKind'
+import { getEffectiveObjectMode, getParentPath, getSchemaNodeAtPath, isPathOnlyMode, resolveMemberKind } from './memberKind'
 import { renderJava } from './renderJava'
 import type {
   FieldOverride,
@@ -39,6 +39,12 @@ export function buildParsedFieldList(
   options: GeneratorOptions,
   fieldOverrides: Record<string, FieldOverride> = {},
 ): ParsedFieldDescriptor[] {
+  const pathOnly = isPathOnlyMode(options)
+
+  function isRootDirectPath(path: string): boolean {
+    return path.split('/').filter(Boolean).length === 1
+  }
+
   function isMemberConfigAllowed(path: string): boolean {
     const segments = path.split('/').filter(Boolean)
 
@@ -67,6 +73,8 @@ export function buildParsedFieldList(
       const ownerSchema = getSchemaNodeAtPath(schema, getParentPath(field.path)) || schema
       const ownerPath = getParentPath(field.path)
       const memberConfigAllowed = isMemberConfigAllowed(field.path)
+      const memberKindConfigAllowed = memberConfigAllowed && (!pathOnly || isRootDirectPath(field.path))
+      const typeConfigAllowed = memberConfigAllowed || (pathOnly && !isRootDirectPath(field.path))
       const memberKind = resolveMemberKind(
         field.required,
         ownerSchema,
@@ -82,8 +90,14 @@ export function buildParsedFieldList(
         schemaType: field.schemaType,
         required: field.required,
         memberConfigAllowed,
-        memberKind: memberConfigAllowed ? memberKind.memberKind : 'field',
-        propertyAllowed: memberConfigAllowed ? memberKind.propertyAllowed : false,
+        memberKindConfigAllowed,
+        typeConfigAllowed,
+        memberKind: pathOnly && !isRootDirectPath(field.path)
+          ? 'property'
+          : memberConfigAllowed ? memberKind.memberKind : 'field',
+        propertyAllowed: pathOnly && !isRootDirectPath(field.path)
+          ? true
+          : memberConfigAllowed ? memberKind.propertyAllowed : false,
         pathAccessors: override.pathAccessors || defaultPathAccessors,
         typeOptions: Array.from(new Set([resolvedJavaType, ...getTypeOptions(field.node, field.path, options)])),
       }

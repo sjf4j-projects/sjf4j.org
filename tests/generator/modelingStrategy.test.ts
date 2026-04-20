@@ -3,7 +3,7 @@ import { createDefaultGeneratorOptions, generateJavaOutput, parseSchemaText, typ
 
 function generate(
   schemaText: string,
-  modelingStrategy: 'jojo' | 'pojo' = 'jojo',
+  modelingStrategy: 'jojo' | 'pojo' | 'pathOnly' = 'jojo',
   fieldOverrides: Record<string, FieldOverride> = {},
 ): string {
   const options = createDefaultGeneratorOptions()
@@ -28,9 +28,10 @@ describe('generator modeling strategy', () => {
     }`)
 
     expect(code).toContain('import org.sjf4j.JsonObject;')
-    expect(code).toContain('import lombok.EqualsAndHashCode;')
+    expect(code).toContain('import lombok.Getter;')
+    expect(code).toContain('import lombok.Setter;')
     expect(code).toContain('public class Order extends JsonObject {')
-    expect(code).toContain('@EqualsAndHashCode(callSuper = true)')
+    expect(code).toContain('@Getter @Setter')
     expect(code).not.toContain('@NodeBinding(readDynamic = false)')
   })
 
@@ -46,9 +47,10 @@ describe('generator modeling strategy', () => {
 
     expect(code).toContain('import org.sjf4j.JsonObject;')
     expect(code).toContain('import org.sjf4j.annotation.NodeBinding;')
-    expect(code).toContain('import lombok.EqualsAndHashCode;')
+    expect(code).toContain('import lombok.Getter;')
+    expect(code).toContain('import lombok.Setter;')
     expect(code).toContain('@NodeBinding(readDynamic = false)')
-    expect(code).toContain('@EqualsAndHashCode(callSuper = true)')
+    expect(code).toContain('@Getter @Setter')
     expect(code).toContain('public class Order extends JsonObject {')
   })
 
@@ -64,10 +66,12 @@ describe('generator modeling strategy', () => {
 
     expect(code).not.toContain('import org.sjf4j.JsonObject;')
     expect(code).not.toContain('import org.sjf4j.annotation.NodeBinding;')
-    expect(code).not.toContain('import lombok.EqualsAndHashCode;')
+    expect(code).not.toContain('import lombok.Getter;')
+    expect(code).not.toContain('import lombok.Setter;')
     expect(code).not.toContain('@NodeBinding(readDynamic = false)')
     expect(code).toContain('@Data')
-    expect(code).not.toContain('@EqualsAndHashCode(callSuper = true)')
+    expect(code).not.toContain('@Getter')
+    expect(code).not.toContain('@Setter')
     expect(code).toContain('public class Order {')
     expect(code).not.toContain('public class Order extends JsonObject {')
   })
@@ -160,5 +164,37 @@ describe('generator modeling strategy', () => {
 
     expect(pojoCode).toContain('public static class Customer {')
     expect(pojoCode).not.toContain('public static class Customer extends JsonObject {')
+  })
+
+  it('renders pathOnly root schemas as JOJO and suppresses nested classes', () => {
+    const code = generate(`{
+      "title": "Order",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "customer": {
+          "type": "object",
+          "properties": {
+            "email": { "type": "string" }
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sku": { "type": "string" }
+            }
+          }
+        }
+      }
+    }`, 'pathOnly')
+
+    expect(code).toContain('public class Order extends JsonObject {')
+    expect(code).toContain('@NodeBinding(readDynamic = false)')
+    expect(code).toContain('private JsonObject customer;')
+    expect(code).toContain('private List<JsonObject> items;')
+    expect(code).not.toContain('public static class Customer')
+    expect(code).not.toContain('public static class ItemsItem')
   })
 })

@@ -1,4 +1,4 @@
-import { getEffectiveObjectMode, resolveMemberKind } from './memberKind'
+import { getEffectiveObjectMode, isPathOnlyMode, resolveMemberKind, shouldDisableDynamicReads } from './memberKind'
 import { collectSchemaFields, getDefaultAccessors } from './mapping'
 import { getDefaultTypeOption, getEnumTypeName, isStringEnumSchema, mapSchemaType } from './mapping'
 import { toCamelCase, toPascalCase } from './naming'
@@ -8,10 +8,75 @@ type RenderedField = {
   propertyName: string
   fieldName: string
   typeName: string
+  node: SchemaNode
   title?: string
   description?: string
   required: boolean
   memberKind: 'field' | 'property'
+}
+
+function usesValidationAnnotation(generatorOptions: GeneratorOptions, annotation: '@NotNull' | '@Size' | '@Min' | '@Max' | '@Pattern'): boolean {
+  return generatorOptions.useValidation && generatorOptions.validationAnnotations.includes(annotation)
+}
+
+function escapeJavaString(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+}
+
+function isIntegralConstraintValue(value: number | undefined): value is number {
+  return typeof value === 'number' && Number.isInteger(value)
+}
+
+function buildValidationAnnotations(
+  node: SchemaNode,
+  required: boolean,
+  generatorOptions: GeneratorOptions,
+  imports: Set<string>,
+  indent: string,
+): string {
+  const annotations: string[] = []
+
+  if (usesValidationAnnotation(generatorOptions, '@NotNull') && required) {
+    imports.add(`${generatorOptions.validationNamespace}.validation.constraints.NotNull`)
+    annotations.push(`${indent}@NotNull`)
+  }
+
+  if (usesValidationAnnotation(generatorOptions, '@Size')) {
+    const sizeParts: string[] = []
+    const min = typeof node.minLength === 'number' ? node.minLength : typeof node.minItems === 'number' ? node.minItems : undefined
+    const max = typeof node.maxLength === 'number' ? node.maxLength : typeof node.maxItems === 'number' ? node.maxItems : undefined
+
+    if (typeof min === 'number') {
+      sizeParts.push(`min = ${min}`)
+    }
+    if (typeof max === 'number') {
+      sizeParts.push(`max = ${max}`)
+    }
+
+    if (sizeParts.length > 0) {
+      imports.add(`${generatorOptions.validationNamespace}.validation.constraints.Size`)
+      annotations.push(`${indent}@Size(${sizeParts.join(', ')})`)
+    }
+  }
+
+  if (usesValidationAnnotation(generatorOptions, '@Pattern') && typeof node.pattern === 'string' && node.pattern.length > 0) {
+    imports.add(`${generatorOptions.validationNamespace}.validation.constraints.Pattern`)
+    annotations.push(`${indent}@Pattern(regexp = "${escapeJavaString(node.pattern)}")`)
+  }
+
+  if (usesValidationAnnotation(generatorOptions, '@Min') && isIntegralConstraintValue(node.minimum)) {
+    imports.add(`${generatorOptions.validationNamespace}.validation.constraints.Min`)
+    annotations.push(`${indent}@Min(${node.minimum})`)
+  }
+
+  if (usesValidationAnnotation(generatorOptions, '@Max') && isIntegralConstraintValue(node.maximum)) {
+    imports.add(`${generatorOptions.validationNamespace}.validation.constraints.Max`)
+    annotations.push(`${indent}@Max(${node.maximum})`)
+  }
+
+  return annotations.length > 0 ? `${annotations.join('\n')}\n` : ''
 }
 
 function escapeJavaDoc(value: string): string {
@@ -125,7 +190,20 @@ function shouldRenderObjectAsJojo(schema: SchemaNode, generatorOptions: Generato
 }
 
 function shouldDisableDynamicReadsForObject(schema: SchemaNode, generatorOptions: GeneratorOptions, overrideJavaType?: string): boolean {
-  return getObjectModeForSchema(schema, generatorOptions, overrideJavaType) === 'jojo' && schema.additionalProperties === false
+  return getObjectModeForSchema(schema, generatorOptions, overrideJavaType) === 'jojo'
+    && shouldDisableDynamicReads(schema, generatorOptions)
+}
+
+function isRootDirectPath(path: string): boolean {
+  return path.split('/').filter(Boolean).length === 1
+}
+
+function shouldUseFlattenedEnumName(path: string, generatorOptions: GeneratorOptions): boolean {
+  return isPathOnlyMode(generatorOptions) && !isRootDirectPath(path)
+}
+
+function getResolvedEnumTypeName(path: string, generatorOptions: GeneratorOptions): string {
+  return getEnumTypeName(path, shouldUseFlattenedEnumName(path, generatorOptions))
 }
 
 function normalizeEnumConstantName(value: string): string {
@@ -222,7 +300,12 @@ function renderPropertyGetterBody(field: RenderedField, indentLevel: number): st
   }
 }
 
-function renderPropertyAccessorBlock(fields: RenderedField[], generatorOptions: GeneratorOptions, indentLevel: number): string {
+function renderPropertyAccessorBlock(
+  fields: RenderedField[],
+  generatorOptions: GeneratorOptions,
+  imports: Set<string>,
+  indentLevel: number,
+): string {
   const memberIndent = getIndent(indentLevel + 1)
 
   return fields.map((field) => {
@@ -236,9 +319,7 @@ function renderPropertyAccessorBlock(fields: RenderedField[], generatorOptions: 
     const getterDoc = fieldJavaDocText
       ? `${memberIndent}/** ${escapeJavaDoc(fieldJavaDocText)} */\n`
       : ''
-    const validation = generatorOptions.useValidation && field.required
-      ? `${memberIndent}@NotNull\n`
-      : ''
+    const validation = buildValidationAnnotations(field.node, field.required, generatorOptions, imports, memberIndent)
 
     return `${getterDoc}${validation}${memberIndent}public ${field.typeName} get${methodName}() {\n${renderPropertyGetterBody(field, indentLevel)}\n${memberIndent}}\n\n${memberIndent}public void set${methodName}(${field.typeName} ${field.fieldName}) {\n${getIndent(indentLevel + 2)}put("${field.propertyName}", ${field.fieldName});\n${memberIndent}}`
   }).join('\n\n')
@@ -337,6 +418,11 @@ function resolveTypeNameForPath(
   }
 
   if (shouldMaterializeObjectClass(node)) {
+    if (isPathOnlyMode(generatorOptions) && propertyPath) {
+      addImportsForResolvedType('JsonObject', imports)
+      return 'JsonObject'
+    }
+
     const objectMode = getObjectModeForSchema(node, generatorOptions, fieldOverrides[propertyPath]?.javaType)
     if (objectMode === 'jsonObject') {
       addImportsForResolvedType('JsonObject', imports)
@@ -352,7 +438,7 @@ function resolveTypeNameForPath(
   }
 
   if (isStringEnumSchema(node) && generatorOptions.enumMapping === 'javaEnum') {
-    return getEnumTypeName(propertyPath)
+    return getResolvedEnumTypeName(propertyPath, generatorOptions)
   }
 
   const overrideType = fieldOverrides[propertyPath]?.javaType
@@ -469,8 +555,8 @@ function renderPathAccessorBlock(
       ? renderCompiledPathGetterBody(typeName, pathReference, indentLevel)
       : renderPathGetterBody(typeName, pathExpression, indentLevel)
     const setterBody = usesConstantPath
-      ? `${getIndent(indentLevel + 2)}${pathReference}.put(this, value);`
-      : `${getIndent(indentLevel + 2)}putByPath(${pathExpression}, value);`
+      ? `${getIndent(indentLevel + 2)}${pathReference}.ensurePut(this, value);`
+      : `${getIndent(indentLevel + 2)}ensurePutByPath(${pathExpression}, value);`
 
     return `${getterSignature}\n${getterBody}\n${memberIndent}}\n\n${setterSignature}\n${setterBody}\n${memberIndent}}`
   }).join('\n\n')
@@ -585,6 +671,11 @@ function resolveFieldType(
   }
 
   if (shouldMaterializeObjectClass(node)) {
+    if (isPathOnlyMode(generatorOptions) && propertyPath) {
+      addImportsForResolvedType('JsonObject', imports)
+      return 'JsonObject'
+    }
+
     const objectMode = getObjectModeForSchema(node, generatorOptions, fieldOverrides[propertyPath]?.javaType)
     if (objectMode === 'jsonObject') {
       addImportsForResolvedType('JsonObject', imports)
@@ -602,7 +693,7 @@ function resolveFieldType(
   }
 
   if (isStringEnumSchema(node) && generatorOptions.enumMapping === 'javaEnum') {
-    return getEnumTypeName(propertyPath)
+    return getResolvedEnumTypeName(propertyPath, generatorOptions)
   }
 
   const overrideType = fieldOverrides[propertyPath]?.javaType
@@ -642,11 +733,14 @@ function renderClass(
   const objectMode = objectModeOverride || getObjectModeForSchema(schema, generatorOptions, objectPath ? fieldOverrides[objectPath]?.javaType : undefined)
   const rendersAsJojo = objectMode === 'jojo'
   const disablesDynamicReads = shouldDisableDynamicReadsForObject(schema, generatorOptions, objectMode === 'jojo' ? 'JOJO' : 'POJO')
+  const pathOnly = isPathOnlyMode(generatorOptions)
 
   if (generatorOptions.accessorMode === 'lombok') {
-    imports.add('lombok.Data')
     if (rendersAsJojo) {
-      imports.add('lombok.EqualsAndHashCode')
+      imports.add('lombok.Getter')
+      imports.add('lombok.Setter')
+    } else {
+      imports.add('lombok.Data')
     }
   }
 
@@ -663,7 +757,7 @@ function renderClass(
     const fieldName = toCamelCase(propertyName)
 
     if (isStringEnumSchema(propertySchema) && generatorOptions.enumMapping === 'javaEnum' && fieldOverrides[propertyPath]?.javaType !== 'String') {
-      nestedEnumBlocks.push(renderEnumBlock(getEnumTypeName(propertyPath), propertySchema.enum as string[], indentLevel + 1))
+      nestedEnumBlocks.push(renderEnumBlock(getResolvedEnumTypeName(propertyPath, generatorOptions), propertySchema.enum as string[], indentLevel + 1))
     }
 
     if (
@@ -672,7 +766,7 @@ function renderClass(
       && generatorOptions.enumMapping === 'javaEnum'
       && fieldOverrides[`${propertyPath}/0`]?.javaType !== 'String'
     ) {
-      nestedEnumBlocks.push(renderEnumBlock(getEnumTypeName(`${propertyPath}/0`), propertySchema.items.enum as string[], indentLevel + 1))
+      nestedEnumBlocks.push(renderEnumBlock(getResolvedEnumTypeName(`${propertyPath}/0`, generatorOptions), propertySchema.items.enum as string[], indentLevel + 1))
     }
 
     const resolvedType = resolveFieldType(
@@ -688,14 +782,11 @@ function renderClass(
 
     const memberConfig = resolveMemberKind(required.has(propertyName), schema, generatorOptions, fieldOverrides[propertyPath], objectMode === 'jojo' ? 'JOJO' : 'POJO')
 
-    if (generatorOptions.useValidation && required.has(propertyName)) {
-      imports.add(`${generatorOptions.validationNamespace}.validation.constraints.NotNull`)
-    }
-
     return {
       propertyName,
       fieldName,
       typeName: resolvedType,
+      node: propertySchema,
       title: propertySchema.title,
       description: propertySchema.description,
       required: required.has(propertyName),
@@ -706,10 +797,8 @@ function renderClass(
   const classDocs = renderClassJavaDoc(schema, generatorOptions, indentLevel, isRoot)
   const annotationLines = [
     disablesDynamicReads ? `${indent}@NodeBinding(readDynamic = false)` : '',
-    generatorOptions.accessorMode === 'lombok' ? `${indent}@Data` : '',
-    generatorOptions.accessorMode === 'lombok' && rendersAsJojo
-      ? `${indent}@EqualsAndHashCode(callSuper = true)`
-      : '',
+    generatorOptions.accessorMode === 'lombok' && rendersAsJojo ? `${indent}@Getter @Setter` : '',
+    generatorOptions.accessorMode === 'lombok' && !rendersAsJojo ? `${indent}@Data` : '',
   ].filter(Boolean).join('\n')
 
   const classHeader = `${indent}${isRoot ? 'public' : 'public static'} class ${className}${rendersAsJojo ? ' extends JsonObject' : ''} {`
@@ -726,9 +815,7 @@ function renderClass(
       const javaDoc = fieldJavaDocText
         ? `${memberIndent}/** ${escapeJavaDoc(fieldJavaDocText)} */\n`
         : ''
-      const validation = generatorOptions.useValidation && field.required
-        ? `${memberIndent}@NotNull\n`
-        : ''
+      const validation = buildValidationAnnotations(field.node, field.required, generatorOptions, imports, memberIndent)
 
       return `${javaDoc}${validation}${memberIndent}private ${field.typeName} ${field.fieldName};`
     })
@@ -741,6 +828,7 @@ function renderClass(
   const propertyAccessorBlock = renderPropertyAccessorBlock(
     renderedFields.filter((field) => field.memberKind === 'property'),
     generatorOptions,
+    imports,
     indentLevel,
   )
 
@@ -748,7 +836,11 @@ function renderClass(
     ? renderPathAccessorBlock(schema, generatorOptions, imports, fieldOverrides, indentLevel)
     : { constants: '', methods: '' }
 
-  const memberSections = [fieldMembers, fieldAccessorBlock, propertyAccessorBlock, pathAccessorBlock.constants, pathAccessorBlock.methods, nestedEnumBlocks.join('\n\n'), nestedClassBlocks.join('\n\n')]
+  const hoistedPathOnlyEnumBlocks = isRoot && pathOnly
+    ? collectHoistedPathOnlyEnumBlocks(schema, generatorOptions, fieldOverrides, indentLevel + 1)
+    : []
+
+  const memberSections = [fieldMembers, fieldAccessorBlock, propertyAccessorBlock, pathAccessorBlock.constants, pathAccessorBlock.methods, nestedEnumBlocks.join('\n\n'), hoistedPathOnlyEnumBlocks.join('\n\n'), nestedClassBlocks.join('\n\n')]
     .filter(Boolean)
 
   if (memberSections.length === 0) {
@@ -758,6 +850,62 @@ function renderClass(
   return [classDocs, annotationLines, classHeader, memberSections.join('\n\n'), `${indent}}`]
     .filter(Boolean)
     .join('\n')
+}
+
+function collectHoistedPathOnlyEnumBlocks(
+  schema: SchemaNode,
+  generatorOptions: GeneratorOptions,
+  fieldOverrides: Record<string, FieldOverride>,
+  indentLevel: number,
+): string[] {
+  if (!isPathOnlyMode(generatorOptions) || generatorOptions.enumMapping !== 'javaEnum') {
+    return []
+  }
+
+  const enumBlocks: string[] = []
+  const emittedNames = new Set<string>()
+
+  function visit(node: SchemaNode | undefined, path: string) {
+    if (!node) {
+      return
+    }
+
+    const depth = path.split('/').filter(Boolean).length
+
+    if (isStringEnumSchema(node) && depth > 1 && fieldOverrides[path]?.javaType !== 'String') {
+      const typeName = getResolvedEnumTypeName(path, generatorOptions)
+      if (!emittedNames.has(typeName)) {
+        emittedNames.add(typeName)
+        enumBlocks.push(renderEnumBlock(typeName, node.enum as string[], indentLevel))
+      }
+    }
+
+    if (getDeclaredType(node) === 'array') {
+      const itemPath = path ? `${path}/0` : '/0'
+      if (isStringEnumSchema(node.items) && itemPath.split('/').filter(Boolean).length > 1 && fieldOverrides[itemPath]?.javaType !== 'String') {
+        const typeName = getResolvedEnumTypeName(itemPath, generatorOptions)
+        if (!emittedNames.has(typeName)) {
+          emittedNames.add(typeName)
+          enumBlocks.push(renderEnumBlock(typeName, node.items.enum as string[], indentLevel))
+        }
+      }
+
+      visit(node.items, itemPath)
+      return
+    }
+
+    if (getDeclaredType(node) === 'object' && node.properties) {
+      Object.entries(node.properties).forEach(([propertyName, propertySchema]) => {
+        visit(propertySchema, `${path}/${propertyName}`)
+      })
+    }
+  }
+
+  Object.entries(schema.properties || {}).forEach(([propertyName, propertySchema]) => {
+    visit(propertySchema, `/${propertyName}`)
+  })
+
+  return enumBlocks
 }
 
 export function renderJava(

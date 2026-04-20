@@ -2,8 +2,8 @@ package org.example.generated;
 
 import jakarta.validation.constraints.NotNull;
 import java.time.OffsetDateTime;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
 import org.sjf4j.JsonObject;
 
 /**
@@ -19,8 +19,7 @@ import org.sjf4j.JsonObject;
  * }
  * </pre>
  */
-@Data
-@EqualsAndHashCode(callSuper = true)
+@Getter @Setter
 public class Order extends JsonObject {
     /** Business order identifier. */
     @NotNull

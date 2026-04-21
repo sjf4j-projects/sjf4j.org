@@ -623,7 +623,7 @@ function downloadOutput() {
           <div class="generator-subsection-header">
             <div>
               <p class="generator-card-kicker">Schema Libraries</p>
-              <p class="generator-subsection-copy">Add extra schema documents below the main schema. This is a UI preview for future cross-document <code>$ref</code> support.</p>
+              <p class="generator-subsection-copy">Add extra schema documents below the main schema.</p>
             </div>
 
             <button type="button" class="generator-button generator-library-add-button" @click="addSchemaLibrary">
@@ -648,8 +648,8 @@ function downloadOutput() {
                 </div>
 
                 <div class="generator-library-card-actions">
-                  <button type="button" class="generator-text-button" @click="formatSchemaLibrary(library.key)">Format</button>
-                  <button type="button" class="generator-text-button" @click="removeSchemaLibrary(library.key)">Remove</button>
+                  <button type="button" class="generator-text-button generator-library-action-button" @click="formatSchemaLibrary(library.key)">Format</button>
+                  <button type="button" class="generator-text-button generator-library-action-button" @click="removeSchemaLibrary(library.key)">Remove</button>
                 </div>
               </div>
 
@@ -894,8 +894,6 @@ function downloadOutput() {
 }
 
 .generator-library-add-button {
-  min-height: 34px;
-  padding: 0 12px;
   flex: none;
 }
 
@@ -1569,6 +1567,16 @@ function downloadOutput() {
   border: 0;
   background: transparent;
   color: var(--vp-c-brand-1);
+}
+
+.generator-button.generator-library-add-button {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 0.84rem;
+}
+
+.generator-text-button.generator-library-action-button {
+  font-size: 0.84rem;
 }
 
 .generator-button:hover,

@@ -1,5 +1,5 @@
 import { toPascalCase } from './naming'
-import { normalizeSchema } from './normalize'
+import { normalizeSchema, normalizeSchemaBundle } from './normalize'
 import type { GeneratorOptions, ParseSchemaResult, SchemaNode } from './types'
 
 export function detectObject(input: unknown): SchemaNode {
@@ -15,6 +15,34 @@ export function parseSchemaText(schemaText: string): ParseSchemaResult {
     return {
       ok: true,
       schema: normalizeSchema(detectObject(JSON.parse(schemaText))),
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'Invalid JSON input.',
+    }
+  }
+}
+
+function parseBundleDocument(schemaText: string): SchemaNode {
+  return detectObject(JSON.parse(schemaText))
+}
+
+export function parseSchemaBundleText(schemaText: string, librarySchemaTexts: string[] = []): ParseSchemaResult {
+  try {
+    const rootSchema = parseBundleDocument(schemaText)
+    const librarySchemas = librarySchemaTexts.map((librarySchemaText, index) => {
+      try {
+        return parseBundleDocument(librarySchemaText)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Invalid JSON input.'
+        throw new Error(`Schema library ${index + 1}: ${message}`)
+      }
+    })
+
+    return {
+      ok: true,
+      schema: normalizeSchemaBundle(rootSchema, librarySchemas),
     }
   } catch (error) {
     return {

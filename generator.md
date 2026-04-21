@@ -20,6 +20,9 @@ pageClass: generator-page
 
 - Input must be valid JSON.
 - Top-level schema must be a JSON object.
+- The playground accepts one main schema plus zero or more schema-library documents.
+- Schema-library documents are identified by their own `$id` values.
+- Relative external `$ref` targets are resolved against the current document `$id` when that `$id` is a URI-like base.
 - If `className` is empty, the generator uses `schema.title`; otherwise it uses the explicit override.
 - If neither is available, the fallback class name is `GeneratedType`.
 
@@ -93,6 +96,7 @@ pageClass: generator-page
 - `None`: all properties default to `property`.
 - `property` generation is only valid for `JOJO` classes because property access is backed by `JsonObject` APIs.
 - A generated `property` has no backing field. It is rendered as explicit getter/setter methods that read and write through `JsonObject` methods such as `getXxx(key)` and `put(key, value)`.
+- Primitive `boolean` getters use JavaBean-style `isXxx()` naming; boxed `Boolean` getters continue to use `getXxx()`.
 - Getter generation prefers dedicated `JsonObject` APIs when available (for example `getString(key)`, `getInt(key)`, `getJsonObject(key)`); otherwise it falls back to typed access such as `get(key, LocalDateTime.class)`.
 - For `List<T>` properties, getter generation prefers `getList(key, T.class)` when `T` is a concrete non-generic item type; for complex generic item types it falls back to `getList(key)`.
 - `property` generation always emits explicit getter/setter methods, even when `accessorMode = lombok` or `accessorMode = none`.
@@ -108,7 +112,9 @@ pageClass: generator-page
 - Root direct members do not generate path accessors.
 - Path accessors without index parameters use precompiled `static final JsonPath` constants via `JsonPath.compile(...)` on the root class.
 - Path accessors with one or more index parameters continue to use `JsonObject` `*ByPath` APIs and `ensurePutByPath(path, value)` directly.
+- Primitive `boolean` path getters use JavaBean-style `isXxx()` naming; boxed `Boolean` path getters continue to use `getXxx()`.
 - Getter generation prefers dedicated `*ByPath` APIs when available; otherwise it falls back to typed access such as `getByPath(path, LocalDateTime.class)`.
+- For primitive cached-path getters backed by `JsonPath`, generation uses default-value overloads such as `getInt(this, 0)`, `getLong(this, 0L)`, `getDouble(this, 0d)`, and `getBoolean(this, false)` instead of manual null checks.
 - Path setter generation uses `ensurePut` semantics so missing intermediate containers are created when needed.
 - For `List<T>` path accessors, getter generation prefers `getListByPath(path, T.class)` when `T` is a concrete non-generic item type; for complex generic item types it falls back to `getListByPath(path)`.
 - Eligible descendant paths use flattened method names such as `getCustomerEmail()` and `setCustomerEmail(String value)`.
@@ -134,8 +140,9 @@ pageClass: generator-page
 - The current baseline supports `allOf` flattening for object schemas only.
 - `allOf` is normalized before type mapping and rendering.
 - Local `$ref` values of the form `#/...` are resolved during normalization.
+- External `$ref` values such as `common.json#/$defs/Type` are resolved against the current document `$id`, then matched to a supplied schema-library document `$id`.
 - Circular local `$ref` chains are rejected with an error.
-- Non-local `$ref` values are ignored in the current baseline, similar to other unsupported keywords.
+- Missing external `$ref` document ids are rejected with an error.
 - Supported merge behavior:
   - `properties`: merged by property name
   - `required`: union of all entries
@@ -156,8 +163,9 @@ pageClass: generator-page
 - Enum constant name collisions are resolved by appending numeric suffixes such as `_2`, `_3`, and so on.
 - Property-definition conflicts in `allOf` are hard errors.
 - Circular local `$ref` chains are hard errors.
+- Duplicate schema-library `$id` values are hard errors.
+- Missing external `$ref` document ids are hard errors.
 - Unsupported non-object `allOf` composition is a hard error.
-- Non-local `$ref` values are ignored without failing generation.
 - Other unsupported or unrecognized schema keywords are ignored in the current baseline unless a rule explicitly states otherwise.
 
 ### 11. Smoke-test regression scope
@@ -174,7 +182,7 @@ The first regression suite locks down these behaviors:
 - nested enum generation and typed enum access
 - `pathOnly` enum hoisting and typed path access
 - object allOf flattening and conflict detection
-- local `$ref` expansion and external `$ref` ignore behavior
+- local `$ref` expansion and schema-library `$id`-based external `$ref` resolution
 
 ### 12. Deferred rules to refine next
 

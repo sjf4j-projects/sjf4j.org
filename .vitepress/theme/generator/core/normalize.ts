@@ -1,5 +1,21 @@
 import type { SchemaNode } from './types'
 
+type SchemaDocumentRecord = {
+  key: string
+  id: string | undefined
+  resolvedId: string | undefined
+  schema: SchemaNode
+}
+
+type NormalizationState = {
+  allowUnresolvedExternalRefs: boolean
+  documentsById: Map<string, SchemaDocumentRecord>
+  documentsByKey: Map<string, SchemaDocumentRecord>
+}
+
+const ROOT_DOCUMENT_KEY = '__root__'
+const BUNDLE_BASE_URL = 'https://schema-bundle.local.invalid/'
+
 const STRUCTURAL_KEYS = new Set([
   'type',
   'properties',
@@ -47,6 +63,10 @@ function hasStructuralContent(node: SchemaNode): boolean {
 }
 
 function resolvePointer(rootSchema: SchemaNode, ref: string): SchemaNode {
+  if (ref === '#') {
+    return rootSchema
+  }
+
   const segments = ref
     .slice(2)
     .split('/')
@@ -68,26 +88,187 @@ function resolvePointer(rootSchema: SchemaNode, ref: string): SchemaNode {
   return current as SchemaNode
 }
 
-function resolveRefNode(schema: SchemaNode, rootSchema: SchemaNode, path: string, seenRefs: string[]): SchemaNode {
-  if (!schema.$ref) {
-    return schema
+function resolveDocumentIdAgainstBase(documentId: string, baseId: string): string {
+  try {
+    return new URL(documentId, baseId).href
+  } catch {
+    return documentId
+  }
+}
+
+function getDocumentBaseId(document: SchemaDocumentRecord | undefined): string {
+  return document?.resolvedId || BUNDLE_BASE_URL
+}
+
+function createSingleDocumentState(rootSchema: SchemaNode): NormalizationState {
+  const rootDocument: SchemaDocumentRecord = {
+    key: ROOT_DOCUMENT_KEY,
+    id: rootSchema.$id,
+    resolvedId: rootSchema.$id ? resolveDocumentIdAgainstBase(rootSchema.$id, BUNDLE_BASE_URL) : undefined,
+    schema: rootSchema,
   }
 
-  if (!schema.$ref.startsWith('#/')) {
-    const { $ref: _ignoredRef, ...rest } = schema
-    return rest
+  const documentsByKey = new Map<string, SchemaDocumentRecord>([[ROOT_DOCUMENT_KEY, rootDocument]])
+  const documentsById = new Map<string, SchemaDocumentRecord>()
+  if (rootSchema.$id) {
+    documentsById.set(rootSchema.$id, rootDocument)
   }
 
-  if (seenRefs.includes(schema.$ref)) {
-    throw new Error(`Circular local $ref '${schema.$ref}' detected at '${path || '$'}'.`)
-  }
-
-  const resolved = resolvePointer(rootSchema, schema.$ref)
-  const { $ref: _localRef, ...rest } = schema
   return {
-    ...resolved,
-    ...rest,
-    $defs: rest.$defs || resolved.$defs,
+    allowUnresolvedExternalRefs: true,
+    documentsById,
+    documentsByKey,
+  }
+}
+
+function createBundleState(rootSchema: SchemaNode, librarySchemas: SchemaNode[]): NormalizationState {
+  const documentsByKey = new Map<string, SchemaDocumentRecord>()
+  const documentsById = new Map<string, SchemaDocumentRecord>()
+
+  const documents: SchemaDocumentRecord[] = [
+    {
+      key: ROOT_DOCUMENT_KEY,
+      id: rootSchema.$id,
+      resolvedId: rootSchema.$id ? resolveDocumentIdAgainstBase(rootSchema.$id, BUNDLE_BASE_URL) : undefined,
+      schema: rootSchema,
+    },
+    ...librarySchemas.map((schema, index) => ({
+      key: `__library_${index + 1}__`,
+      id: schema.$id,
+      resolvedId: schema.$id ? resolveDocumentIdAgainstBase(schema.$id, BUNDLE_BASE_URL) : undefined,
+      schema,
+    })),
+  ]
+
+  for (const document of documents) {
+    documentsByKey.set(document.key, document)
+
+    if (!document.id || !document.resolvedId) {
+      continue
+    }
+
+    const existing = documentsById.get(document.resolvedId)
+    if (existing) {
+      throw new Error(`Duplicate schema document id '${document.id}'.`)
+    }
+
+    documentsById.set(document.resolvedId, document)
+  }
+
+  return {
+    allowUnresolvedExternalRefs: false,
+    documentsById,
+    documentsByKey,
+  }
+}
+
+function getDocumentSchema(state: NormalizationState, documentKey: string): SchemaNode {
+  const document = state.documentsByKey.get(documentKey)
+  if (!document) {
+    throw new Error(`Unknown schema document key '${documentKey}'.`)
+  }
+
+  return document.schema
+}
+
+function parseExternalRef(ref: string): { documentId: string; pointer: string } {
+  const hashIndex = ref.indexOf('#')
+  if (hashIndex === -1) {
+    return {
+      documentId: ref,
+      pointer: '#',
+    }
+  }
+
+  const documentId = ref.slice(0, hashIndex)
+  const fragment = ref.slice(hashIndex + 1)
+  if (fragment.length === 0) {
+    return {
+      documentId,
+      pointer: '#',
+    }
+  }
+
+  if (!fragment.startsWith('/')) {
+    throw new Error(`Only JSON Pointer fragments are supported in $ref '${ref}'.`)
+  }
+
+  return {
+    documentId,
+    pointer: `#${fragment}`,
+  }
+}
+
+function resolveExternalDocument(state: NormalizationState, currentDocumentKey: string, documentId: string): SchemaDocumentRecord | undefined {
+  const currentDocument = state.documentsByKey.get(currentDocumentKey)
+  const resolvedDocumentId = resolveDocumentIdAgainstBase(documentId, getDocumentBaseId(currentDocument))
+  return state.documentsById.get(resolvedDocumentId)
+}
+
+function resolveRefNode(
+  schema: SchemaNode,
+  path: string,
+  state: NormalizationState,
+  currentDocumentKey: string,
+  seenRefs: string[],
+): { schema: SchemaNode; documentKey: string; refKey?: string } {
+  if (!schema.$ref) {
+    return {
+      schema,
+      documentKey: currentDocumentKey,
+    }
+  }
+
+  if (schema.$ref.startsWith('#')) {
+    const circularRefKey = `${currentDocumentKey}:${schema.$ref}`
+    if (seenRefs.includes(circularRefKey)) {
+      throw new Error(`Circular local $ref '${schema.$ref}' detected at '${path || '$'}'.`)
+    }
+
+    const resolved = resolvePointer(getDocumentSchema(state, currentDocumentKey), schema.$ref)
+    const { $ref: _localRef, ...rest } = schema
+
+    return {
+      schema: {
+        ...resolved,
+        ...rest,
+        $defs: rest.$defs || resolved.$defs,
+      },
+      documentKey: currentDocumentKey,
+      refKey: circularRefKey,
+    }
+  }
+
+  const { documentId, pointer } = parseExternalRef(schema.$ref)
+  const targetDocument = resolveExternalDocument(state, currentDocumentKey, documentId)
+  if (!targetDocument) {
+    if (state.allowUnresolvedExternalRefs) {
+      const { $ref: _ignoredRef, ...rest } = schema
+      return {
+        schema: rest,
+        documentKey: currentDocumentKey,
+      }
+    }
+
+    throw new Error(`No schema document found for id '${documentId}'.`)
+  }
+
+  const circularRefKey = `${targetDocument.key}:${pointer}`
+  if (seenRefs.includes(circularRefKey)) {
+    throw new Error(`Circular $ref '${schema.$ref}' detected at '${path || '$'}'.`)
+  }
+
+  const resolved = resolvePointer(targetDocument.schema, pointer)
+  const { $ref: _externalRef, ...rest } = schema
+
+  return {
+    schema: {
+      ...resolved,
+      ...rest,
+      $defs: rest.$defs || resolved.$defs,
+    },
+    documentKey: targetDocument.key,
+    refKey: circularRefKey,
   }
 }
 
@@ -128,29 +309,37 @@ function stripUndefined<T extends Record<string, unknown>>(value: T): T {
   ) as T
 }
 
-export function normalizeSchema(schema: SchemaNode, path = '', rootSchema: SchemaNode = schema, seenRefs: string[] = []): SchemaNode {
-  const refResolvedSchema = resolveRefNode(schema, rootSchema, path, seenRefs)
-  const nextSeenRefs = refResolvedSchema === schema || !schema.$ref || !schema.$ref.startsWith('#/')
-    ? seenRefs
-    : [...seenRefs, schema.$ref]
+function normalizeSchemaInternal(
+  schema: SchemaNode,
+  path: string,
+  state: NormalizationState,
+  currentDocumentKey: string,
+  seenRefs: string[],
+): SchemaNode {
+  const resolvedRef = resolveRefNode(schema, path, state, currentDocumentKey, seenRefs)
+  const refResolvedSchema = resolvedRef.schema
+  const refResolvedDocumentKey = resolvedRef.documentKey
+  const nextSeenRefs = resolvedRef.refKey
+    ? [...seenRefs, resolvedRef.refKey]
+    : seenRefs
 
   const normalizedDefs = refResolvedSchema.$defs
     ? Object.fromEntries(
-      Object.entries(refResolvedSchema.$defs).map(([name, child]) => [name, normalizeSchema(child, `${path}/$defs/${name}`, rootSchema, nextSeenRefs)]),
+      Object.entries(refResolvedSchema.$defs).map(([name, child]) => [name, normalizeSchemaInternal(child, `${path}/$defs/${name}`, state, refResolvedDocumentKey, nextSeenRefs)]),
     )
     : undefined
 
   const normalizedProperties = refResolvedSchema.properties
     ? Object.fromEntries(
-      Object.entries(refResolvedSchema.properties).map(([name, child]) => [name, normalizeSchema(child, `${path}/${name}`, rootSchema, nextSeenRefs)]),
+      Object.entries(refResolvedSchema.properties).map(([name, child]) => [name, normalizeSchemaInternal(child, `${path}/${name}`, state, refResolvedDocumentKey, nextSeenRefs)]),
     )
     : undefined
 
   const normalizedItems = refResolvedSchema.items
-    ? normalizeSchema(refResolvedSchema.items, `${path}/0`, rootSchema, nextSeenRefs)
+    ? normalizeSchemaInternal(refResolvedSchema.items, `${path}/0`, state, refResolvedDocumentKey, nextSeenRefs)
     : undefined
   const normalizedAdditionalProperties = typeof refResolvedSchema.additionalProperties === 'object' && refResolvedSchema.additionalProperties !== null && !Array.isArray(refResolvedSchema.additionalProperties)
-    ? normalizeSchema(refResolvedSchema.additionalProperties, `${path}/additionalProperties`, rootSchema, nextSeenRefs)
+    ? normalizeSchemaInternal(refResolvedSchema.additionalProperties, `${path}/additionalProperties`, state, refResolvedDocumentKey, nextSeenRefs)
     : refResolvedSchema.additionalProperties
 
   const baseNode: SchemaNode = stripUndefined({
@@ -167,7 +356,7 @@ export function normalizeSchema(schema: SchemaNode, path = '', rootSchema: Schem
     return baseNode
   }
 
-  const normalizedBranches = refResolvedSchema.allOf.map((entry, index) => normalizeSchema(entry, `${path}/allOf/${index}`, rootSchema, nextSeenRefs))
+  const normalizedBranches = refResolvedSchema.allOf.map((entry, index) => normalizeSchemaInternal(entry, `${path}/allOf/${index}`, state, refResolvedDocumentKey, nextSeenRefs))
   const mergeCandidates = [baseNode, ...normalizedBranches]
   const objectCandidates = mergeCandidates.filter(hasStructuralContent)
 
@@ -206,4 +395,12 @@ export function normalizeSchema(schema: SchemaNode, path = '', rootSchema: Schem
   })
 
   return merged
+}
+
+export function normalizeSchema(schema: SchemaNode, path = '', rootSchema: SchemaNode = schema, seenRefs: string[] = []): SchemaNode {
+  return normalizeSchemaInternal(schema, path, createSingleDocumentState(rootSchema), ROOT_DOCUMENT_KEY, seenRefs)
+}
+
+export function normalizeSchemaBundle(rootSchema: SchemaNode, librarySchemas: SchemaNode[]): SchemaNode {
+  return normalizeSchemaInternal(rootSchema, '', createBundleState(rootSchema, librarySchemas), ROOT_DOCUMENT_KEY, [])
 }

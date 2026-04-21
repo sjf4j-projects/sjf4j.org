@@ -125,6 +125,39 @@ describe('generator path accessors', () => {
     expect(code).toContain('return PATH_PROFILE_CREATED_AT.get(this, LocalDateTime.class);')
   })
 
+  it('uses JsonPath default-value overloads for primitive cached path getters', () => {
+    const code = generate(`{
+      "title": "Profile",
+      "type": "object",
+      "properties": {
+        "meta": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "weight": { "type": "number" },
+            "count": { "type": "integer" }
+          }
+        }
+      }
+    }`, {
+      accessorMode: 'none',
+      pathAccessorStrategy: 'all',
+      integerType: 'int',
+      numberType: 'double',
+    })
+
+    expect(code).toContain('private static final JsonPath PATH_META_ENABLED = JsonPath.compile("$.meta.enabled");')
+    expect(code).toContain('public boolean isMetaEnabled() {')
+    expect(code).toContain('return PATH_META_ENABLED.getBoolean(this, false);')
+    expect(code).toContain('private static final JsonPath PATH_META_WEIGHT = JsonPath.compile("$.meta.weight");')
+    expect(code).toContain('return PATH_META_WEIGHT.getDouble(this, 0d);')
+    expect(code).toContain('private static final JsonPath PATH_META_COUNT = JsonPath.compile("$.meta.count");')
+    expect(code).toContain('return PATH_META_COUNT.getInt(this, 0);')
+    expect(code).not.toContain('final Boolean value = PATH_META_ENABLED.getBoolean(this);')
+    expect(code).not.toContain('final Double value = PATH_META_WEIGHT.getDouble(this);')
+    expect(code).not.toContain('final Integer value = PATH_META_COUNT.getInt(this);')
+  })
+
   it('does not generate path accessors when the root class is a POJO', () => {
     const code = generate(`{
       "title": "Order",

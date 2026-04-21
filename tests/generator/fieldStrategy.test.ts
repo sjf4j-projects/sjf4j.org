@@ -110,6 +110,7 @@ describe('generator field strategy', () => {
       "type": "object",
       "properties": {
         "count": { "type": "integer" },
+        "active": { "type": "boolean" },
         "startedAt": { "type": "string", "format": "date-time" },
         "amount": { "type": "number" }
       }
@@ -123,10 +124,37 @@ describe('generator field strategy', () => {
 
     expect(code).toContain('public int getCount() {')
     expect(code).toContain('return getInt("count", 0);')
+    expect(code).toContain('public boolean isActive() {')
+    expect(code).toContain('return getBoolean("active", false);')
     expect(code).toContain('public LocalDateTime getStartedAt() {')
     expect(code).toContain('return get("startedAt", LocalDateTime.class);')
     expect(code).toContain('public BigDecimal getAmount() {')
     expect(code).toContain('return getBigDecimal("amount");')
+  })
+
+  it('uses isXxx for primitive boolean field accessors and getXxx for boxed boolean accessors', () => {
+    const code = generate(`{
+      "title": "Flags",
+      "type": "object",
+      "properties": {
+        "active": { "type": "boolean" },
+        "enabled": { "type": "boolean" }
+      }
+    }`, {
+      fieldStrategy: 'all',
+      accessorMode: 'methods',
+      booleanMapping: 'boolean',
+    }, {
+      '/enabled': { memberKind: 'field', javaType: 'Boolean' },
+    })
+
+    expect(code).toContain('private boolean active;')
+    expect(code).toContain('public boolean isActive() {')
+    expect(code).toContain('return active;')
+    expect(code).toContain('public void setActive(boolean active) {')
+    expect(code).toContain('private Boolean enabled;')
+    expect(code).toContain('public Boolean getEnabled() {')
+    expect(code).toContain('return enabled;')
   })
 
   it('uses dedicated JsonObject APIs for boxed primitives and collections when available', () => {

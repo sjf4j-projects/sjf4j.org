@@ -240,13 +240,18 @@ function renderEnumBlock(typeName: string, values: string[], indentLevel: number
   return `${indent}public enum ${typeName} {\n${memberIndent}${constants.join(`,\n${memberIndent}`)}\n${indent}}`
 }
 
+function buildGetterMethodName(typeName: string, methodSuffix: string): string {
+  return `${typeName === 'boolean' ? 'is' : 'get'}${methodSuffix}`
+}
+
 function renderFieldAccessorBlock(fields: RenderedField[], indentLevel: number): string {
   const memberIndent = getIndent(indentLevel + 1)
   const bodyIndent = getIndent(indentLevel + 2)
 
   return fields.map((field) => {
     const methodName = field.fieldName.charAt(0).toUpperCase() + field.fieldName.slice(1)
-    return `${memberIndent}public ${field.typeName} get${methodName}() {\n${bodyIndent}return ${field.fieldName};\n${memberIndent}}\n\n${memberIndent}public void set${methodName}(${field.typeName} ${field.fieldName}) {\n${bodyIndent}this.${field.fieldName} = ${field.fieldName};\n${memberIndent}}`
+    const getterName = buildGetterMethodName(field.typeName, methodName)
+    return `${memberIndent}public ${field.typeName} ${getterName}() {\n${bodyIndent}return ${field.fieldName};\n${memberIndent}}\n\n${memberIndent}public void set${methodName}(${field.typeName} ${field.fieldName}) {\n${bodyIndent}this.${field.fieldName} = ${field.fieldName};\n${memberIndent}}`
   }).join('\n\n')
 }
 
@@ -310,6 +315,7 @@ function renderPropertyAccessorBlock(
 
   return fields.map((field) => {
     const methodName = field.fieldName.charAt(0).toUpperCase() + field.fieldName.slice(1)
+    const getterName = buildGetterMethodName(field.typeName, methodName)
     const fieldJavaDocText = generatorOptions.javaDocGeneration === 'description'
       ? field.description
       : generatorOptions.javaDocGeneration === 'title'
@@ -321,7 +327,7 @@ function renderPropertyAccessorBlock(
       : ''
     const validation = buildValidationAnnotations(field.node, field.required, generatorOptions, imports, memberIndent)
 
-    return `${getterDoc}${validation}${memberIndent}public ${field.typeName} get${methodName}() {\n${renderPropertyGetterBody(field, indentLevel)}\n${memberIndent}}\n\n${memberIndent}public void set${methodName}(${field.typeName} ${field.fieldName}) {\n${getIndent(indentLevel + 2)}put("${field.propertyName}", ${field.fieldName});\n${memberIndent}}`
+    return `${getterDoc}${validation}${memberIndent}public ${field.typeName} ${getterName}() {\n${renderPropertyGetterBody(field, indentLevel)}\n${memberIndent}}\n\n${memberIndent}public void set${methodName}(${field.typeName} ${field.fieldName}) {\n${getIndent(indentLevel + 2)}put("${field.propertyName}", ${field.fieldName});\n${memberIndent}}`
   }).join('\n\n')
 }
 
@@ -537,13 +543,14 @@ function renderPathAccessorBlock(
   const methods = fields.map((field) => {
     const typeName = resolveTypeNameForPath(field.node, field.path, generatorOptions, imports, fieldOverrides)
     const methodSuffix = buildPathAccessorMethodName(field.path)
+    const getterName = buildGetterMethodName(typeName, methodSuffix)
     const indexParams = buildPathAccessorIndexParams(field.path)
     const usesConstantPath = indexParams.length === 0
     const pathExpression = buildJsonPathExpression(field.path, indexParams)
     const pathReference = usesConstantPath ? buildPathConstantName(field.path) : pathExpression
     const getterParams = indexParams.map((param) => `int ${param.name}`).join(', ')
     const setterParams = [...indexParams.map((param) => `int ${param.name}`), `${typeName} value`].join(', ')
-    const getterSignature = `${memberIndent}public ${typeName} get${methodSuffix}(${getterParams}) {`
+    const getterSignature = `${memberIndent}public ${typeName} ${getterName}(${getterParams}) {`
     const setterSignature = `${memberIndent}public void set${methodSuffix}(${setterParams}) {`
 
     if (usesConstantPath) {
@@ -574,19 +581,19 @@ function renderCompiledPathGetterBody(typeName: string, pathReference: string, i
     case 'String':
       return `${bodyIndent}return ${pathReference}.getString(this);`
     case 'int':
-      return `${bodyIndent}final Integer value = ${pathReference}.getInt(this);\n${bodyIndent}return value == null ? 0 : value;`
+      return `${bodyIndent}return ${pathReference}.getInt(this, 0);`
     case 'Integer':
       return `${bodyIndent}return ${pathReference}.getInt(this);`
     case 'long':
-      return `${bodyIndent}final Long value = ${pathReference}.getLong(this);\n${bodyIndent}return value == null ? 0L : value;`
+      return `${bodyIndent}return ${pathReference}.getLong(this, 0L);`
     case 'Long':
       return `${bodyIndent}return ${pathReference}.getLong(this);`
     case 'double':
-      return `${bodyIndent}final Double value = ${pathReference}.getDouble(this);\n${bodyIndent}return value == null ? 0d : value;`
+      return `${bodyIndent}return ${pathReference}.getDouble(this, 0d);`
     case 'Double':
       return `${bodyIndent}return ${pathReference}.getDouble(this);`
     case 'boolean':
-      return `${bodyIndent}final Boolean value = ${pathReference}.getBoolean(this);\n${bodyIndent}return value != null && value;`
+      return `${bodyIndent}return ${pathReference}.getBoolean(this, false);`
     case 'Boolean':
       return `${bodyIndent}return ${pathReference}.getBoolean(this);`
     case 'BigInteger':

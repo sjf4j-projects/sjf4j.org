@@ -4,7 +4,7 @@ import {
   buildParsedFieldList,
   createDefaultGeneratorOptions,
   generateJavaOutput,
-  parseSchemaText,
+  parseSchemaBundleText,
   resolveClassName,
   shouldRenderAsJojo,
   validationAnnotationOptions,
@@ -13,6 +13,11 @@ import {
   type GeneratorOptions,
   type ValidationAnnotation,
 } from '../generator/core'
+
+type SchemaLibraryInput = {
+  key: number
+  content: string
+}
 
 const exampleSchema = `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -67,6 +72,8 @@ const exampleSchema = `{
 }`
 
 const schemaInput = ref(exampleSchema)
+const schemaLibraries = ref<SchemaLibraryInput[]>([])
+const nextSchemaLibraryKey = ref(1)
 const options = ref<GeneratorOptions>(createDefaultGeneratorOptions())
 const toastMessage = ref('')
 const copyButtonLabel = ref('Copy')
@@ -168,25 +175,39 @@ function highlightJson(code: string): string {
     .replace(/\b(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\b/g, '<span class="token-json-number">$1</span>')
 }
 
-const parsedSchemaState = computed(() => parseSchemaText(schemaInput.value))
+function describeTextStats(value: string): string {
+  const lines = value.split('\n').length
+  const characters = value.length
+  return `${lines} lines · ${characters} chars`
+}
+
+function detectSchemaDocumentId(content: string): string | null {
+  try {
+    const parsed = JSON.parse(content) as { $id?: unknown }
+    return typeof parsed.$id === 'string' && parsed.$id.trim() ? parsed.$id.trim() : null
+  } catch {
+    return null
+  }
+}
+
+const parsedSchemaState = computed(() => parseSchemaBundleText(
+  schemaInput.value,
+  schemaLibraries.value.map((library) => library.content),
+))
 
 const resolvedClassName = computed(() => resolveClassName(parsedSchemaState.value, options.value))
 
 const generatedOutput = computed(() => generateJavaOutput(parsedSchemaState.value, options.value, fieldOverrides.value))
 
 const schemaStats = computed(() => {
-  const lines = schemaInput.value.split('\n').length
-  const characters = schemaInput.value.length
-  return `${lines} lines · ${characters} chars`
+  return describeTextStats(schemaInput.value)
 })
 
 const outputStats = computed(() => {
   if (!generatedOutput.value.code) {
     return 'No output yet'
   }
-  const lines = generatedOutput.value.code.split('\n').length
-  const characters = generatedOutput.value.code.length
-  return `${lines} lines · ${characters} chars`
+  return describeTextStats(generatedOutput.value.code)
 })
 
 const outputHeaderMeta = computed(() => `${resolvedClassName.value}.java · ${outputStats.value}`)
@@ -294,8 +315,45 @@ function toggleFieldPathAccessor(name: string) {
   }
 }
 
+function createEmptySchemaLibrary(): SchemaLibraryInput {
+  const key = nextSchemaLibraryKey.value
+  nextSchemaLibraryKey.value += 1
+
+  return {
+    key,
+    content: `{
+  "$id": "common.json",
+  "$defs": {}
+}`,
+  }
+}
+
+function addSchemaLibrary() {
+  schemaLibraries.value = [...schemaLibraries.value, createEmptySchemaLibrary()]
+}
+
+function removeSchemaLibrary(key: number) {
+  schemaLibraries.value = schemaLibraries.value.filter((library) => library.key !== key)
+}
+
+function formatSchemaLibrary(key: number) {
+  const target = schemaLibraries.value.find((library) => library.key === key)
+  if (!target) {
+    return
+  }
+
+  try {
+    target.content = JSON.stringify(JSON.parse(target.content), null, 2)
+  } catch {}
+}
+
+function getSchemaLibraryStats(content: string): string {
+  return describeTextStats(content)
+}
+
 function loadExample() {
   schemaInput.value = exampleSchema
+  schemaLibraries.value = []
   showToast('Reloaded sample schema.')
 }
 
@@ -560,6 +618,56 @@ function downloadOutput() {
             @scroll="syncInputHighlight"
           ></textarea>
         </div>
+
+        <section class="generator-schema-libraries">
+          <div class="generator-subsection-header">
+            <div>
+              <p class="generator-card-kicker">Schema Libraries</p>
+              <p class="generator-subsection-copy">Add extra schema documents below the main schema. This is a UI preview for future cross-document <code>$ref</code> support.</p>
+            </div>
+
+            <button type="button" class="generator-button generator-library-add-button" @click="addSchemaLibrary">
+              + Add library
+            </button>
+          </div>
+
+          <div v-if="schemaLibraries.length === 0" class="generator-libraries-empty">
+            <strong>No schema libraries yet</strong>
+            <p>Add a supporting schema such as <code>common.json</code>.</p>
+          </div>
+
+          <div v-else class="generator-library-list">
+            <article v-for="(library, index) in schemaLibraries" :key="library.key" class="generator-library-card">
+              <div class="generator-library-card-header">
+                <div class="generator-library-card-title">
+                  <strong>Library {{ index + 1 }}</strong>
+                  <span class="generator-meta">{{ getSchemaLibraryStats(library.content) }}</span>
+                  <span v-if="detectSchemaDocumentId(library.content)" class="generator-library-id-pill">
+                    $id: {{ detectSchemaDocumentId(library.content) }}
+                  </span>
+                </div>
+
+                <div class="generator-library-card-actions">
+                  <button type="button" class="generator-text-button" @click="formatSchemaLibrary(library.key)">Format</button>
+                  <button type="button" class="generator-text-button" @click="removeSchemaLibrary(library.key)">Remove</button>
+                </div>
+              </div>
+
+              <textarea
+                v-model="library.content"
+                class="generator-library-editor"
+                spellcheck="false"
+                wrap="off"
+                :aria-label="`Schema library ${index + 1}`"
+                placeholder="Paste supporting JSON Schema here"
+              ></textarea>
+
+              <p class="generator-library-hint">
+                Put document identity in schema content, for example <code>"$id": "common.json"</code>.
+              </p>
+            </article>
+          </div>
+        </section>
       </section>
 
       <section class="generator-card generator-workspace-card generator-fields-card">
@@ -759,6 +867,131 @@ function downloadOutput() {
   height: 760px;
   padding-left: 14px;
   padding-right: 14px;
+}
+
+.generator-schema-libraries {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--vp-c-divider) 88%, transparent);
+}
+
+.generator-subsection-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.generator-subsection-copy,
+.generator-library-hint,
+.generator-libraries-empty p {
+  margin: 0;
+  color: var(--vp-c-text-2);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.generator-library-add-button {
+  min-height: 34px;
+  padding: 0 12px;
+  flex: none;
+}
+
+.generator-libraries-empty {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px dashed color-mix(in srgb, var(--vp-c-divider) 90%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--vp-c-bg) 90%, transparent);
+}
+
+.generator-library-list {
+  display: grid;
+  gap: 10px;
+  max-height: 300px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.generator-library-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--vp-c-bg) 94%, transparent);
+}
+
+.generator-library-card-header,
+.generator-library-card-title,
+.generator-library-card-actions {
+  display: flex;
+}
+
+.generator-library-card-header {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.generator-library-card-title {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.generator-library-card-title strong {
+  font-size: 0.92rem;
+}
+
+.generator-library-id-pill {
+  align-self: flex-start;
+  padding: 0.14rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vp-c-brand-1) 10%, var(--vp-c-bg));
+  color: var(--vp-c-brand-1);
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.3;
+  word-break: break-all;
+}
+
+.generator-library-card-actions {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.generator-library-editor {
+  width: 100%;
+  min-height: 160px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--vp-c-divider) 90%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, #0b1120 92%, var(--vp-c-bg) 8%);
+  color: #dbe7ff;
+  font: inherit;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.84rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.generator-library-editor:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--vp-c-brand-1) 68%, white 0%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--vp-c-brand-1) 16%, transparent);
+}
+
+.generator-subsection-copy code,
+.generator-library-hint code,
+.generator-libraries-empty code {
+  padding: 0.08rem 0.38rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vp-c-brand-1) 10%, var(--vp-c-bg));
+  color: var(--vp-c-brand-1);
 }
 
 .generator-fields-card {
@@ -1427,9 +1660,14 @@ function downloadOutput() {
   }
 
   .generator-card-header,
+  .generator-subsection-header,
   .generator-footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .generator-library-list {
+    max-height: 260px;
   }
 
   .generator-editor,

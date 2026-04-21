@@ -19,7 +19,7 @@ and Java Properties (built-in).
 SJF4J provides **a unified JSON-semantic structural processing layer**, 
 offering consistent APIs for **modeling** (OBNT), **parsing** (JSON/YAML), 
 **navigating** (JSON Path), **patching** (JSON Patch), **validating** (JSON Schema), 
-and **mapping** across data formats and native object graphs.
+and **mapping** (Transformation) across data formats and native object graphs.
 
 ## Install
 SJF4J requires **JDK 8+** and has no external dependencies (except for the chosen data parser).
@@ -237,12 +237,17 @@ Within SJF4J, `Map/List` achieves the highest speed, with `JOJO` generally close
 **JSON Schema Validating Benchmark**  
 SJF4J fully supports JSON Schema Draft 2020-12 and consistently ranks
 among the top-performing Java implementations in
-[Bowtie](https://bowtie.report/#/implementations/java-sjf4j) benchmarks.
+[Bowtie](https://bowtie.report/) benchmarks.
 
 Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
 
 ## Contributing
-Given that JSON has evolved into a well-defined and widely adopted specification,
-SJF4J began as an exploration of *What JSON-Oriented development might look like in Java*.
+As JSON has become a well-defined and widely adopted specification,  
+Java still lacks a smooth experience when working with JSON.
 
-Contributions of code, docs, bug reports, examples, benchmarks, and careful feedback are all valuable.
+So, *what might JSON-oriented development look like in Java?*  
+SJF4J is an attempt to answer that question.
+
+Contributions are welcome in many forms, including code, documentation, bug reports, examples, benchmarks, 
+and thoughtful feedback.  
+A good place to start is by [opening an issue](https://github.com/sjf4j-projects/sjf4j/issues/new).

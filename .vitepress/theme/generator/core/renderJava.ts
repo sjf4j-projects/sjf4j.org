@@ -106,6 +106,21 @@ function renderJavaDocBlock(text: string, indentLevel: number): string {
   return `${indent}/**\n${indent} * ${escapeJavaDoc(text)}\n${indent} */`
 }
 
+function resolveJavaDocText(
+  generatorOptions: GeneratorOptions,
+  title: string | undefined,
+  description: string | undefined,
+): string {
+  switch (generatorOptions.javaDocGeneration) {
+    case 'description':
+      return description || ''
+    case 'title':
+      return title || ''
+    default:
+      return ''
+  }
+}
+
 function getShapeLabel(node: SchemaNode | undefined): string {
   const declared = getDeclaredType(node)
 
@@ -316,11 +331,7 @@ function renderPropertyAccessorBlock(
   return fields.map((field) => {
     const methodName = field.fieldName.charAt(0).toUpperCase() + field.fieldName.slice(1)
     const getterName = buildGetterMethodName(field.typeName, methodName)
-    const fieldJavaDocText = generatorOptions.javaDocGeneration === 'description'
-      ? field.description
-      : generatorOptions.javaDocGeneration === 'title'
-        ? field.title
-        : ''
+    const fieldJavaDocText = resolveJavaDocText(generatorOptions, field.title, field.description)
 
     const getterDoc = fieldJavaDocText
       ? `${memberIndent}/** ${escapeJavaDoc(fieldJavaDocText)} */\n`
@@ -544,6 +555,10 @@ function renderPathAccessorBlock(
     const typeName = resolveTypeNameForPath(field.node, field.path, generatorOptions, imports, fieldOverrides)
     const methodSuffix = buildPathAccessorMethodName(field.path)
     const getterName = buildGetterMethodName(typeName, methodSuffix)
+    const fieldJavaDocText = resolveJavaDocText(generatorOptions, field.node?.title, field.node?.description)
+    const getterDoc = isPathOnlyMode(generatorOptions) && fieldJavaDocText
+      ? `${memberIndent}/** ${escapeJavaDoc(fieldJavaDocText)} */\n`
+      : ''
     const indexParams = buildPathAccessorIndexParams(field.path)
     const usesConstantPath = indexParams.length === 0
     const pathExpression = buildJsonPathExpression(field.path, indexParams)
@@ -565,7 +580,7 @@ function renderPathAccessorBlock(
       ? `${getIndent(indentLevel + 2)}${pathReference}.ensurePut(this, value);`
       : `${getIndent(indentLevel + 2)}ensurePutByPath(${pathExpression}, value);`
 
-    return `${getterSignature}\n${getterBody}\n${memberIndent}}\n\n${setterSignature}\n${setterBody}\n${memberIndent}}`
+    return `${getterDoc}${getterSignature}\n${getterBody}\n${memberIndent}}\n\n${setterSignature}\n${setterBody}\n${memberIndent}}`
   }).join('\n\n')
 
   return {
@@ -813,11 +828,7 @@ function renderClass(
   const fieldMembers = renderedFields
     .filter((field) => field.memberKind === 'field')
     .map((field) => {
-      const fieldJavaDocText = generatorOptions.javaDocGeneration === 'description'
-        ? field.description
-        : generatorOptions.javaDocGeneration === 'title'
-          ? field.title
-          : ''
+      const fieldJavaDocText = resolveJavaDocText(generatorOptions, field.title, field.description)
 
       const javaDoc = fieldJavaDocText
         ? `${memberIndent}/** ${escapeJavaDoc(fieldJavaDocText)} */\n`

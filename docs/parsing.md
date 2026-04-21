@@ -21,7 +21,7 @@ Multiple ways to obtain a `Sjf4j` instance:
 Sjf4j sjf4j = new Sjf4j();          // Default instance
 
 Sjf4j sjf4j2 = Sjf4j.builder()      
-        .jsonFacade(new Jackson3JsonFacade())
+        .jsonFacade(new Jackson3JsonFacade(new JsonMapper()))
         .build();                   // Custom configuration
 
 Sjf4j sjf4j3 = Sjf4j.global();      // Shared global instance

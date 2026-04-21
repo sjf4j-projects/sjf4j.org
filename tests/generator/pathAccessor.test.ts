@@ -222,4 +222,35 @@ describe('generator path accessors', () => {
     expect(code).toContain('public String getItemsSku(int itemsIndex) {')
     expect(code).not.toContain('ItemsItem.class')
   })
+
+  it('places descendant docs on path getters in pathOnly mode', () => {
+    const code = generate(`{
+      "title": "Order",
+      "type": "object",
+      "properties": {
+        "customer": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "object",
+              "description": "Customer address",
+              "properties": {
+                "zip": {
+                  "type": "string",
+                  "description": "Zip code"
+                }
+              }
+            }
+          }
+        }
+      }
+    }`, {
+      accessorMode: 'none',
+      pathAccessorStrategy: 'all',
+      modelingStrategy: 'pathOnly',
+    })
+
+    expect(code).toContain('/** Customer address */\n    public JsonObject getCustomerAddress() {')
+    expect(code).toContain('/** Zip code */\n    public String getCustomerAddressZip() {')
+  })
 })

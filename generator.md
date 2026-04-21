@@ -123,6 +123,7 @@ pageClass: generator-page
 - Per-property settings in **Parsed Properties** can enable or disable root path methods for eligible descendant paths.
 - When `modelingStrategy = pathOnly`, root-level path accessors are the only generated access surface for non-root properties.
 - In `pathOnly` mode, object-valued descendant paths may also generate path accessors, using `JsonObject`.
+- In `pathOnly` mode, descendant property JavaDoc is attached to the generated path getter method.
 
 ### 8. Enum generation
 

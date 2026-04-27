@@ -146,12 +146,15 @@ pageClass: generator-page
 - Missing external `$ref` document ids are rejected with an error.
 - Supported merge behavior:
   - `properties`: merged by property name
+    - identical property schemas are preserved as-is
+    - compatible object-property definitions are recursively merged as an inner object-level `allOf`, allowing later branches to narrow an earlier `type: object` declaration with nested `properties`, `required`, or `additionalProperties`
+    - incompatible property definitions still produce an error instead of guessing
   - `required`: union of all entries
   - `title`: prefer the outer schema, otherwise the first non-empty branch title
   - `description`: prefer the outer schema, otherwise the first non-empty branch description
 - `additionalProperties`: `false` wins; otherwise compatible schema values are preserved, or `true` when explicitly enabled
 - Nested object schemas may also use `allOf`; they are rendered as inner classes after normalization unless `modelingStrategy = pathOnly` suppresses descendant class generation.
-- Conflicting definitions for the same property name produce an error instead of guessing.
+- Conflicting definitions for the same property name produce an error instead of guessing when they cannot be reconciled through object-schema narrowing.
 - Non-object `allOf` composition is not supported in the current baseline.
 
 ### 10. Determinism and diagnostics
@@ -182,7 +185,7 @@ The first regression suite locks down these behaviors:
 - path accessor generation on the root JOJO class
 - nested enum generation and typed enum access
 - `pathOnly` enum hoisting and typed path access
-- object allOf flattening and conflict detection
+- object allOf flattening, object-property narrowing, and conflict detection
 - local `$ref` expansion and schema-library `$id`-based external `$ref` resolution
 
 ### 12. Deferred rules to refine next

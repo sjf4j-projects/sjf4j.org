@@ -1,11 +1,26 @@
 import { describe, expect, it } from 'vitest'
-import { createDefaultGeneratorOptions, generateJavaOutput, parseSchemaText } from '../../.vitepress/theme/generator/core'
+import { createDefaultGeneratorOptions, generateJavaOutput, parseSchemaBundleText, parseSchemaText } from '../../.vitepress/theme/generator/core'
 
 function generate(schemaText: string, overrides: Partial<ReturnType<typeof createDefaultGeneratorOptions>> = {}) {
   const options = createDefaultGeneratorOptions()
   Object.assign(options, overrides)
 
   const parsed = parseSchemaText(schemaText)
+  return {
+    parsed,
+    output: generateJavaOutput(parsed, options),
+  }
+}
+
+function generateBundle(
+  schemaText: string,
+  librarySchemaTexts: string[],
+  overrides: Partial<ReturnType<typeof createDefaultGeneratorOptions>> = {},
+) {
+  const options = createDefaultGeneratorOptions()
+  Object.assign(options, overrides)
+
+  const parsed = parseSchemaBundleText(schemaText, librarySchemaTexts)
   return {
     parsed,
     output: generateJavaOutput(parsed, options),
@@ -228,5 +243,87 @@ describe('generator allOf normalization', () => {
     expect(parsed.schema.required).toEqual(['meta'])
     expect(output.error).toBe('')
     expect(output.code).toContain('private JsonObject meta;')
+  })
+
+  it('merges narrowed object properties across bundled allOf refs', () => {
+    const { parsed, output } = generateBundle(`{
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://metaplus.dev/json-schemas/domain_doc.json",
+      "title": "DomainDoc",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "metaplus_doc.json"
+        },
+        {
+          "$ref": "#/$defs/self"
+        }
+      ],
+      "$defs": {
+        "self": {
+          "type": "object",
+          "properties": {
+            "meta": {
+              "type": "object",
+              "properties": {
+                "domain": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["name"],
+                  "additionalProperties": false
+                },
+                "storage": {
+                  "type": "object"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              },
+              "required": ["domain", "storage", "schema"],
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    }`, [`{
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://metaplus.dev/json-schemas/metaplus_doc.json",
+      "title": "MetaplusDoc",
+      "type": "object",
+      "properties": {
+        "idea": {
+          "type": "object"
+        },
+        "meta": {
+          "description": "Source-aligned metadata synchronized from authoritative systems.",
+          "type": "object"
+        },
+        "plus": {
+          "type": "object"
+        }
+      },
+      "required": ["idea", "meta", "plus"],
+      "additionalProperties": false
+    }`], {
+      accessorMode: 'none',
+      modelingStrategy: 'jojo',
+    })
+
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) {
+      return
+    }
+
+    expect(parsed.schema.required).toEqual(['idea', 'meta', 'plus'])
+    expect(output.error).toBe('')
+    expect(output.code).toContain('public static class Meta extends JsonObject {')
+    expect(output.code).toContain('@NodeBinding(readDynamic = false)')
+    expect(output.code).toContain('private Domain domain;')
+    expect(output.code).toContain('private JsonObject storage;')
+    expect(output.code).toContain('private JsonObject schema;')
   })
 })

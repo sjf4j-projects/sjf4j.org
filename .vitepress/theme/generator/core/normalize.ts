@@ -309,6 +309,36 @@ function stripUndefined<T extends Record<string, unknown>>(value: T): T {
   ) as T
 }
 
+function mergePropertyDefinition(
+  name: string,
+  left: SchemaNode,
+  right: SchemaNode,
+  path: string,
+  state: NormalizationState,
+  currentDocumentKey: string,
+  seenRefs: string[],
+): SchemaNode {
+  if (isSameSchema(left, right)) {
+    return left
+  }
+
+  try {
+    return normalizeSchemaInternal(
+      { allOf: [left, right] },
+      `${path}/properties/${name}`,
+      state,
+      currentDocumentKey,
+      seenRefs,
+    )
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Only object allOf merge is supported')) {
+      throw new Error(`Conflicting property definition for '${name}' in allOf at '${path || '$'}'.`)
+    }
+
+    throw error
+  }
+}
+
 function normalizeSchemaInternal(
   schema: SchemaNode,
   path: string,
@@ -373,8 +403,17 @@ function normalizeSchemaInternal(
     }
 
     for (const [name, child] of Object.entries(candidate.properties || {})) {
-      if (mergedProperties[name] && !isSameSchema(mergedProperties[name], child)) {
-        throw new Error(`Conflicting property definition for '${name}' in allOf at '${path || '$'}'.`)
+      if (mergedProperties[name]) {
+        mergedProperties[name] = mergePropertyDefinition(
+          name,
+          mergedProperties[name],
+          child,
+          path,
+          state,
+          refResolvedDocumentKey,
+          nextSeenRefs,
+        )
+        continue
       }
 
       mergedProperties[name] = child

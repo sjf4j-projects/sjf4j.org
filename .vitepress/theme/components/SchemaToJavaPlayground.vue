@@ -823,7 +823,7 @@ function downloadOutput() {
 
 .generator-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1.13fr) minmax(250px, 310px) minmax(0, 1.13fr);
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 295px) minmax(0, 1fr);
   gap: 10px;
 }
 

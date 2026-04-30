@@ -278,28 +278,6 @@ JsonPointer.compile("/scores/2").remove(jo);
 String s = jo.getStringByPath("/scores/3");
 ```
 
-## Global Path Cache
-
-SJF4J provides a built-in global cache for compiled JSON Path expressions.
-
-It avoids repeated compilation of identical paths and improves performance
-in dynamic but reused query workloads.
-```java
-JsonPath p1 = JsonPath.compileCached("$.a.b[0].c");
-JsonPath p2 = JsonPath.compileCached("$.a.b[0].c");
-
-assertSame(p1, p2);
-```
-By default, the cache is backed by a `ConcurrentHashMap`.
-
-**Note:** since the cache is unbounded, ensure path expressions are reasonably reused
-to avoid excessive memory growth.
-
-For advanced scenarios, the cache strategy can be customized via:
-```java
-Sjf4jConfig.Builder.pathCache((expr, compiler) -> {...});
-```
-
 
 ## Stream-Based Processing
 

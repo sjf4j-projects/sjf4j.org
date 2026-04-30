@@ -197,9 +197,12 @@ orders[1].price = 30
 ```
 
 
-## Why Mapping in OBNT
-In the POJO world, tools like `MapStruct` and `Spring Converter` provide mapping capabilities.  
-Mapping in SJF4J fills the same gap for OBNT, useful for:
+## When to Use Mapping
+
+Use mapping when you need to transform one object shape into another.
+
+In the POJO world, tools like `MapStruct` and `Spring Converter` provide mapping capabilities.
+Mapping in SJF4J fills the same role for OBNT, useful for:
 - DTO projection
 - API shape conversion
 - Structural normalization between different object models

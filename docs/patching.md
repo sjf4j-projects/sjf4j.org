@@ -159,15 +159,17 @@ Additional behaviors:
 - Arrays → merged recursively (not replaced)
 
 
-## Why Patch in OBNT
-Unlike [Mapping](mapping), Patching is designed for **in-place partial updates** on existing structures.
+## When to Use Patch
+
+Use patching when you need **in-place partial updates** on existing structures.
+
+Unlike [Mapping](mapping), patching changes the current object graph instead of producing a transformed target shape.
 
 Typical use cases:
 - Applying HTTP `PATCH` requests to partially update a resource
 - Incrementally updating state without reconstructing the entire object
 - Modifying deeply nested fields using precise path-based operations
 - Synchronizing changes (e.g. event-driven or diff-based updates)  
-
 
 
 

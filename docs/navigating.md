@@ -345,7 +345,7 @@ SJF4J JsonPath is designed for direct traversal over native Java object graphs w
 See [Benchmarks](./benchmarks#json-path-benchmark) for the latest results and methodology.
 
 
-## Why Path in OBNT
+## JsonPath in the OBNT Model
 
 SJF4J applies path navigation directly on plain Java objects (OBNT),
 instead of operating on a separate JSON AST.  

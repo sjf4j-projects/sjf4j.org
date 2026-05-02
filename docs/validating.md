@@ -278,13 +278,6 @@ SchemaValidator validator = new SchemaValidator()
 This is especially useful when your `ref` targets use logical identifiers such as `https://example.org/...` and you want to register the corresponding local schema files up front.
 
 
-## Generating Java 
-
-If you need to generate Java models from JSON Schema, use online tool: [SJF4J Generator](https://sjf4j.org/generator)
-
-- **generator** helps bootstrap Java types from a schema definition
-
-
 ## JSON Schema vs JSR 380
 
 Use them for different layers:
@@ -311,6 +304,13 @@ This performance is primarily due to its direct validation over native object gr
 - Re-serialization
 - Re-parsing
 - Intermediate tree construction
+
+
+## Generating Java
+
+If you need to generate Java models from JSON Schema, use online tool: [SJF4J Generator](https://sjf4j.org/generator)
+
+- **generator** helps bootstrap Java types from a schema definition
 
 
 ## Validation in the OBNT Model

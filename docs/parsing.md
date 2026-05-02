@@ -15,17 +15,7 @@ allowing data to move consistently between:
 
 ## Conversion APIs
 
-### Creating `Sjf4j`
-Multiple ways to obtain a `Sjf4j` instance:
-```java
-Sjf4j sjf4j = new Sjf4j();          // Default instance
-Sjf4j sjf4j3 = Sjf4j.global();      // Shared global instance
-
-Sjf4j sjf4j2 = Sjf4j.builder()      
-        .jsonFacade(new Jackson3JsonFacade(new JsonMapper()))
-        .build();                   // Custom configuration
-```
-
+This section focuses on the core `from...` / `to...` APIs for parsing, serialization, and cross-format conversion.
 
 ### `fromJson()` / `toJson()`
 From JSON
@@ -72,6 +62,49 @@ Object node = sjf4j.fromProperties(properties);
 Properties properties2 = sjf4j.toProperties(node);
 // {"aa":{"bb":[{"cc":"dd"}]}} → aa.bb[0].cc=dd
 ```
+
+## Building `Sjf4j`
+
+Use `new Sjf4j()` for framework defaults, `Sjf4j.global()` for the shared process-wide runtime, and `Sjf4j.builder()` when you need an isolated runtime with custom behavior.
+
+### Creating a runtime
+
+```java
+Sjf4j sjf4j = new Sjf4j();          // Default instance
+Sjf4j sjf4j2 = Sjf4j.global();      // Shared global instance
+
+Sjf4j sjf4j3 = Sjf4j.builder()
+        .jsonFacadeProvider(Jackson3JsonFacade.provider(new JsonMapper()))
+        .build();                   // Custom configuration
+```
+
+### `Sjf4j.builder()` options
+
+| Builder method | Purpose | Typical usage |
+| --- | --- | --- |
+| `jsonFacadeProvider(...)` | Select the JSON backend for this runtime. | `Jackson2JsonFacade.provider(...)`, `Jackson3JsonFacade.provider(...)`, `GsonJsonFacade.provider()`, `Fastjson2JsonFacade.provider()`, `SimpleJsonFacade.provider()` |
+| `yamlFacadeProvider(...)` | Override the YAML backend. | `SnakeYamlFacade.provider()` |
+| `propertiesFacadeProvider(...)` | Override the Java `Properties` facade. | Usually only needed for custom implementations. |
+| `nodeFacadeProvider(...)` | Override the in-memory node binding/conversion facade. | Usually only needed for custom implementations. |
+| `streamingMode(...)` | Control which streaming path the runtime prefers. | `AUTO`, `SHARED_IO`, `EXCLUSIVE_IO`, `PLUGIN_MODULE` |
+| `defaultValueFormat(type, format)` | Set the default named `ValueCodec` format for a value type in this runtime. | `defaultValueFormat(Instant.class, "epochMillis")` |
+| `includeNulls(boolean)` | Control whether JSON serialization keeps `null` object properties. | `includeNulls(false)` |
+
+Example:
+
+```java
+Sjf4j sjf4j = Sjf4j.builder()
+        .jsonFacadeProvider(Jackson2JsonFacade.provider(new ObjectMapper()))
+        .streamingMode(StreamingContext.StreamingMode.PLUGIN_MODULE)
+        .defaultValueFormat(Instant.class, "epochMillis")
+        .includeNulls(false)
+        .build();
+```
+
+To derive a new runtime from an existing one, use `Sjf4j.builder(existingSjf4j)`.
+It copies the current provider, streaming, value-format, and null-handling settings before you override them.
+
+## Node Conversion and Copying
 
 ### `fromNode()` / `bindNode()` / `deepNode()`
 - `fromNode()` converts one OBNT representation into another, with isolated nested results.

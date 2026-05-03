@@ -12,11 +12,11 @@ SJF4J supports two standardized patch formats:
 ## Patching with `JsonPatch`
 
 
-`JsonPatch` is designed for **in-place partial updates** on existing structures.  
-Its operations and processing semantics follow RFC 6902 directly.
+`JsonPatch` is designed for **in-place partial updates** on existing structures.
+Its operations and processing model follow RFC 6902 directly.
 If you are familiar with JSON Patch, you can use `JsonPatch` with the same mental model.
 
-### Applying a Patch 
+### Applying a Patch
 
 A `JsonPatch` is an ordered list of patch operations (`PatchOperation`),
 applied sequentially to a target node.
@@ -63,7 +63,7 @@ Patch execution is ***non-transactional***:
 
 ### Generating a Patch
 
-Use `JsonPatch.diff()`
+Use `JsonPatch.diff()`:
 ```java
 List<Integer> source = Arrays.asList(1, 2, 3);
 List<Integer> target = Arrays.asList(1, 5, 3, 4);
@@ -71,7 +71,7 @@ List<Integer> target = Arrays.asList(1, 5, 3, 4);
 JsonPatch patch = JsonPatch.diff(source, target);
 ```
 
-Output a patch:
+This produces:
 ```json
 [
     {"op":"replace", "path":"/1", "value":5, "from":null},
@@ -89,7 +89,7 @@ assertEquals(target, another);
 
 `diff()` computes a structural transformation that converts `source` into `target`.
 
-## Operation Model
+### Operation Model
 
 `PatchOperation` contains:
 - `op` — operation name
@@ -97,9 +97,9 @@ assertEquals(target, another);
 - `value` — optional
 - `from` — source location (for `move` and `copy`)
 
-### Standard Operations 
+#### Standard Operations
 
-Defined in (RFC 6902):
+Defined by RFC 6902:
 
 | Operation | Description                                        | Example                                            |
 |-----------|----------------------------------------------------|----------------------------------------------------|
@@ -111,7 +111,7 @@ Defined in (RFC 6902):
 | `test`    | Asserts that the value equals the expected value   | `{"op": "test", "path": "/a/b/c", "value": "foo"}` |
 
 
-### Extensions (by SJF4J)
+#### Extensions (by SJF4J)
 
 | Operation   | Description                                                            | Example                                             |
 |-------------|------------------------------------------------------------------------|-----------------------------------------------------|
@@ -120,7 +120,7 @@ Defined in (RFC 6902):
 | `ensurePut` | Ensures the path exists and inserts value, creating intermediate nodes | `{"op": "ensurePut", "path": "/x/y", "value": "z"}` |
 
 
-### Define custom operations
+#### Defining custom operations
 
 Custom operations can be registered via `OperationRegistry`.
 ```java
@@ -129,34 +129,123 @@ OperationRegistry.register("add", (target, op) -> {     // The Standard 'add' op
 });
 ```
 
-## JSON Merge Patch (RFC 7386)
+## Merge Patch with `Patches`
+
+SJF4J supports two merge-style patch APIs in addition to RFC 6902 `JsonPatch`:
+
+- `Patches.mergePatch(target, patch)`
+- `Patches.indexedMerge(target, patch, overwrite, deepCopy)`
+
+They solve different problems.
+
+### `mergePatch()`
 
 Unlike JSON Patch (RFC 6902), [JSON Merge Patch (RFC 7386)](https://datatracker.ietf.org/doc/html/rfc7386):
-- Is object-based
-- Does not use paths
-- Is not operation-based
+- is object-based
+- does not use paths
+- is not operation-based
 
-**`Patches.mergeRfc7386(source, patch)`**
-
-Follows RFC 7386 semantics:
-- If a field exists in both target and patch → replaced
-- If a field in patch is `null` → removed from target
+`mergePatch(...)` follows RFC 7386 semantics:
+- If `patch` is not an object → it replaces the entire target root
+- If a field exists in both target and patch → replaced or recursively merged
+- If a field in patch is `null` → removed from the target object
 - Nested objects → merged recursively
 - Arrays → replaced as a whole
 
+Example:
 
-**`Patches.merge(source, patch, overwrite, deepCopy)`**
+```java
+JsonObject source = JsonObject.fromJson("""
+{
+    "name": "Bob",
+    "profile": {"city": "Paris", "age": 18},
+    "tags": ["a", "b"],
+    "active": true
+}
+""");
 
-Compared to `mergeRfc7386()`, `merge()` provides more flexible and customizable merging semantics.  
-Additional behaviors:
-- `overwrite`
-  - `true` → replace existing values
-  - `false` → only insert missing keys
-- `deepCopy`
-  - `true` → deep clone values
-  - `false` → reference copy
-- `null` in patch → no-op
-- Arrays → merged recursively (not replaced)
+// Continue with the returned root, because merge patch may replace
+// the entire document instead of mutating the original root instance.
+Object merged = Patches.mergePatch(source, JsonObject.fromJson("""
+{
+    "profile": {"age": 20},
+    "tags": ["x"],
+    "active": null
+}
+"""));
+```
+
+Result (`merged`):
+
+```json
+{
+    "name": "Bob",
+    "profile": {"city": "Paris", "age": 20},
+    "tags": ["x"]
+}
+```
+
+Notes:
+- Capture the return value when the patch may replace the root
+- On POJO targets, `null` means **remove**, not `set null`
+- Structural POJO fields cannot be removed, so such patches fail with `JsonException`
+
+### `indexedMerge()`
+
+`indexedMerge(...)` is SJF4J's general-purpose in-place merge API.
+
+It is **not** RFC 7386:
+- Object members merge by key
+- Arrays merge by index
+- Recursion happens only when both sides have the same container shape
+- `overwrite=true` replaces existing non-null values
+- `overwrite=false` fills only missing or `null` target values
+- `deepCopy=true` copies composite patch values before assignment
+
+Null handling differs from `mergePatch(...)`:
+- Object `null` is a normal assigned value
+- In array-to-array merge:
+  - non-final `null` = skip that index
+  - final `null` = truncate to the preceding length
+
+Examples:
+- `[null, 2, 3]` → update indexes `1` and `2` only (skip `0`)
+- `[1, 2, null]` → result becomes `[1, 2]`
+- `[null]` → clear the array
+
+If a trailing-`null` array patch is assigned into a non-array slot, SJF4J stores the same array after removing the trailing sentinel.
+
+Example:
+
+```java
+JsonObject source = JsonObject.fromJson("""
+{
+    "items": [10, 20, 30, 40],
+    "config": {"a": 1}
+}
+""");
+
+source.indexedMerge(JsonObject.fromJson("""
+{
+    "items": [null, 25, null],
+    "config": {"b": 2}
+}
+"""), true, false);
+```
+
+Result:
+
+```json
+{
+    "items": [10, 25],
+    "config": {"a": 1, "b": 2}
+}
+```
+
+Notes:
+- `indexedMerge(...)` always mutates the target in place
+- It is usually the better choice for internal sparse partial updates
+- Fixed-size Java arrays cannot be truncated; such merges fail with `JsonException`
 
 
 ## When to Use Patch
@@ -170,8 +259,4 @@ Typical use cases:
 - Incrementally updating state without reconstructing the entire object
 - Modifying deeply nested fields using precise path-based operations
 - Synchronizing changes (e.g. event-driven or diff-based updates)  
-
-
-
-
 

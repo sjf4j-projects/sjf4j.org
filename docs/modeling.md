@@ -1,13 +1,13 @@
 ---
-title: "Java JSON Modeling with OBNT"
-description: "Learn SJF4J's Object Based Node Tree model for representing structured data across POJO, JOJO, JAJO, Map, List, arrays, sets, and scalar values."
+title: "JSON-Oriented Object Modeling in Java"
+description: "Learn SJF4J's Object-Based Node Tree (OBNT), a JSON-oriented object model for Java spanning POJO, JOJO, JAJO, Map, List, arrays, sets, and scalar values."
 ---
 
-# Modeling (OBNT)
+# Modeling
 
-SJF4J represents structured data as an **Object Based Node Tree (OBNT)**.
+SJF4J represents structured data as an **Object-Based Node Tree (OBNT)**.
 
-## Object Based Node Tree
+## Object-Based Node Tree
 
 Instead of introducing a dedicated AST hierarchy (e.g. `JsonNode`, `JsonElement`),
 OBNT uses **plain Java objects as nodes**. Any node in the tree is one of:
@@ -44,7 +44,7 @@ graph BT
   A generic key-value representation using standard Java `Map`. 
 
 - `JsonObject`:   
-  A lightweight wrapper over a JSON object that provides JSON-semantic APIs,
+  A lightweight wrapper over a JSON object that provides JSON-semantic APIs.
 
 - `JOJO` (JSON Object Java Object):  
   A hybrid model that extends `JsonObject` while behaving as a typed Java object. It combines:
@@ -62,7 +62,7 @@ graph BT
 - `JsonArray`  
   A lightweight wrapper over a JSON array that provides JSON-semantic APIs.
 
-- `JAJO`(JSON Array Java Object)  
+- `JAJO` (JSON Array Java Object)  
   An array type extending `JsonArray`, suitable for domain-specific array models.
 
 - `Array`  
@@ -71,7 +71,7 @@ graph BT
 - `Set`  
   A Java `Set` mapped to a JSON array for compatibility, with no ordering guarantees.
 
-**JSON Value `..`**
+**JSON Value `...`**
 - `String`, `Number`, `Boolean`, `null`  
   JSON primitive values map directly to Java primitives/wrappers.
 
@@ -184,7 +184,7 @@ Nodes.copy(node);                         // shallow copy
 Sjf4j.global().deepNode(node);          // deep copy
 ```
 
-### Use dynamic `JsonObject` 
+### Dynamic Objects with `JsonObject`
 `Nodes` provides static APIs for all OBNT nodes.  
 `JsonObject` offers a dynamic, instance-based representation for JSON objects.
 
@@ -249,7 +249,7 @@ jo.remove("extra");
 ## Modeling Domain Objects
 JSON is flexible, while POJOs are strict.
 
-### With JOJO
+### Modeling with JOJO
 Mapping JSON directly into a POJO often means discarding undeclared fields,
 which may reduce the expressive power of the original JSON payload.  
 
@@ -313,11 +313,11 @@ List<String> allFriends = user.findByPath("$.friends..name", String.class);
 
 
 
-### With JAJO
-JAJO is the array counterpart of JOJO, but not allowing additional fields.  
-The purpose of JAJO is *modeling rather than structure*. 
+### Modeling with JAJO
+JAJO is the array counterpart of JOJO, but unlike JOJO, it does not support additional properties.  
+JAJO is intended for modeling, not for extending array structure.
 
-For example: `JsonPatch` in SJF4J.
+For example, SJF4J's `JsonPatch` is modeled as a specialized `JsonArray`:
 ```java
 public class JsonPatch extends JsonArray {
     // ...
@@ -375,7 +375,7 @@ For `JOJO`, think in two layers:
 If you keep using the same path in code, promote it to a field or accessor.  
 For nested JSON, model stable subtrees as nested `JOJO` / `JAJO`.
 
-### Schema to Model
+### From Schema to Model
 
 JSON Schema helps describe structure, but structure alone does not define a good Java model.
 
@@ -386,4 +386,3 @@ The real question is:
 - What should become part of the stable Java API?
 
 [Generating Java from JSON Schema](https://sjf4j.org/generator) is easy now. **Designing boundaries is the hard part.**
-

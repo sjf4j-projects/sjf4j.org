@@ -4,7 +4,7 @@ layout: home
 hero:
   name: SJF4J
   text: Simple JSON Facade for Java
-  tagline: A unified JSON-semantic structural processing layer
+  tagline: A unified structural processing layer with JSON semantics
   actions:
     - theme: brand
       text: Getting Started
@@ -29,32 +29,32 @@ SJF4J requires `JDK 8+` and has no external dependencies (except for the chosen 
 <div class="feature-grid">
   <div class="feature-card">
     <h3>🌳 Modeling (OBNT)</h3>
-    <p>Defines a unified object model where typed Java fields and dynamic JSON structures coexist.</p>
+    <p>Provides JSON-oriented object modeling where typed Java fields and dynamic JSON structures coexist.</p>
     <a href="/docs/modeling">Learn more</a>
   </div>
   <div class="feature-card">
     <h3>📦 Parsing (JSON / YAML)</h3>
-    <p>Provides a unified facade for parsing and serialization across multiple formats.</p>
+    <p>Parses and serializes JSON, YAML, Java Properties, and native Java object graphs through one facade.</p>
     <a href="/docs/parsing">Learn more</a>
   </div>
   <div class="feature-card">
     <h3>🔭 Navigating (JSON Path)</h3>
-    <p>Enables declarative querying and precise navigation over object graphs using JSON Path.</p>
+    <p>Queries and updates object graphs with JSON Path, JSON Pointer, and mutation APIs.</p>
     <a href="/docs/navigating">Learn more</a>
   </div>
   <div class="feature-card">
-    <h3>🔧 Patching (JSON Patch)</h3>
-    <p>Applies in-place structural updates using JSON Patch operations.</p>
+    <h3>🔧 Patching (Patch / Merge Patch)</h3>
+    <p>Applies in-place structural updates with JSON Patch, JSON Merge Patch, and indexed merge.</p>
     <a href="/docs/patching">Learn more</a>
   </div>
   <div class="feature-card">
     <h3>✅ Validating (JSON Schema)</h3>
-    <p>Validates data against JSON Schema with full structural and semantic constraint support.</p>
+    <p>Validates Java object graphs against JSON Schema Draft 2020-12 without extra serialization.</p>
     <a href="/docs/validating">Learn more</a>
   </div>
   <div class="feature-card">
     <h3>🔀 Mapping (Transformation)</h3>
-    <p>Object graph mapping and transformation, supporting DTO projection.</p>
+    <p>Maps and transforms object graphs for reshaping, projection, and DTO conversion.</p>
     <a href="/docs/mapping">Learn more</a>
   </div>
 </div>

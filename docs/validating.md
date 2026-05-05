@@ -3,7 +3,7 @@ title: "Java JSON Schema Validation"
 description: "Validate Java object graphs directly with JSON Schema Draft 2020-12 using SJF4J's JsonSchema APIs and OBNT model without extra serialization steps."
 ---
 
-# Validating (JSON Schema)
+# Validating
 
 SJF4J offers full support for [JSON Schema Draft 2020-12](https://json-schema.org/) ,
 with verified compliance via [Bowtie(SJF4J)](https://bowtie.report/#/implementations/java-sjf4j).  

@@ -8,7 +8,8 @@ All benchmarks are reproducible and based on JMH (Java Microbenchmark Harness) o
 
 ## Accessor Performance Benchmark
 
-SJF4J's OBNT relies on reflection for flexible access to POJO/JOJO/JAJO. Source: [ReflectionBenchmark.java](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/jmh/java/org/sjf4j/ReflectionBenchmark.java).
+SJF4J's OBNT relies on reflection for flexible access to POJO/JOJO/JAJO.  
+Source: [ReflectionBenchmark.java](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/jmh/java/org/sjf4j/ReflectionBenchmark.java).
 
 ```text
 Benchmark                                            Mode  Cnt   Score   Error  Units
@@ -49,7 +50,8 @@ To bridge different JSON libraries, SJF4J provides three streaming integration m
 Performance characteristics vary depending on the backend and workload,
 and no single mode is universally optimal.
 
-Sample JSON (~1 KB) with nested objects and arrays. Source: [ReadBenchmark.java](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/jmh/java/org/sjf4j/ReadBenchmark.java)
+Sample JSON (~1 KB) with nested objects and arrays.  
+Source: [ReadBenchmark.java](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/jmh/java/org/sjf4j/ReadBenchmark.java)
 
 ```text
 Benchmark                           (streamingMode)  Mode  Cnt   Score   Error  Units

@@ -8,7 +8,8 @@ const LICENSE_URL = 'https://opensource.org/licenses/MIT'
 const DOCS_URL = `${SITE_URL}/docs/getting_started`
 const OG_IMAGE_URL = `${SITE_URL}/logo-512.png`
 const OG_IMAGE_ALT = 'SJF4J logo'
-const DEFAULT_DESCRIPTION = 'SJF4J is a Java JSON library that unifies JSON Path, JSON Patch, JSON Schema, YAML, and object mapping behind one semantic API.'
+const DEFAULT_DESCRIPTION = 'SJF4J is a lightweight JSON facade and structural processing layer for Java, unifying JSON semantics across backends, formats, and native object graphs.'
+const DEFAULT_KEYWORDS = 'SJF4J, Java JSON, JSON facade, JSON Path, JSON Pointer, JSON Patch, JSON Merge Patch, JSON Schema, YAML, Jackson, Gson, Fastjson2, JSON-P, object graph mapping'
 const ORGANIZATION_SCHEMA = {
   '@type': 'Organization',
   name: SITE_NAME,
@@ -19,6 +20,7 @@ const ORGANIZATION_SCHEMA = {
 const WEBSITE_SCHEMA = {
   '@type': 'WebSite',
   name: SITE_NAME,
+  alternateName: 'Simple JSON Facade for Java',
   url: SITE_URL,
   description: DEFAULT_DESCRIPTION,
   publisher: {
@@ -30,19 +32,19 @@ const WEBSITE_SCHEMA = {
 const FAQ_ENTRIES = [
   {
     question: 'What is SJF4J?',
-    answer: 'SJF4J is a Java JSON facade that unifies parsing, modeling, querying, transformation, and validation behind one JSON-semantic API. It sits on top of existing backends and gives you one structural model for working with structured data.',
+    answer: 'SJF4J is a lightweight JSON facade and structural processing layer for Java. It provides consistent JSON semantics across backends, formats, and native Java object graphs through one unified structural model and one family of APIs.',
   },
   {
     question: 'How is SJF4J different from Jackson or Gson?',
-    answer: 'Jackson and Gson are primarily JSON libraries with their own parsing, binding, and tree APIs. SJF4J is a facade and structural processing layer that can sit on top of those libraries and keep parsing, binding, path, patch, and schema workflows on one semantic model.',
+    answer: 'Jackson and Gson are primarily JSON libraries with their own parsing, binding, and tree APIs. SJF4J sits above libraries such as Jackson, Gson, Fastjson2, and JSON-P to provide one JSON-semantic structural model and one consistent API family across parsing, navigation, patching, validation, and mapping workflows.',
   },
   {
     question: 'Which JSON parsers and data formats does SJF4J support?',
-    answer: 'SJF4J supports Jackson, Gson, Fastjson2, JSON-P, and a built-in minimal fallback parser. It works with JSON, YAML, Java Properties, and direct in-memory Java object graphs.',
+    answer: 'SJF4J supports Jackson, Gson, Fastjson2, JSON-P, and a built-in minimal fallback parser. It works with JSON, YAML, Java Properties, and direct in-memory Java object graphs through the same JSON-semantic APIs.',
   },
   {
     question: 'What is OBNT, and why does it matter?',
-    answer: 'OBNT means Object Based Node Tree. Instead of forcing data into a separate AST, SJF4J treats ordinary Java objects as nodes in one unified tree so the same semantic APIs can work across Map, List, POJO, JOJO, JsonObject, and raw values.',
+    answer: 'OBNT means Object-Based Node Tree. Instead of forcing data into a separate AST, SJF4J treats ordinary Java objects as nodes in one unified tree so the same semantic APIs can work across Map, List, POJO, JOJO, JsonObject, and raw values.',
   },
   {
     question: 'What is JOJO, and when should I use it instead of a POJO?',
@@ -126,13 +128,25 @@ function buildPageSchema(pagePath: string, pageTitle: string, description: strin
       '@type': 'SoftwareApplication',
       name: SITE_NAME,
       headline: pageTitle,
+      alternateName: 'Simple JSON Facade for Java',
       applicationCategory: 'DeveloperApplication',
+      applicationSubCategory: 'JSON facade and structural processing library',
       operatingSystem: 'Cross-platform',
       description,
+      keywords: DEFAULT_KEYWORDS,
       url: canonical,
       image: OG_IMAGE_URL,
       codeRepository: GITHUB_URL,
       license: LICENSE_URL,
+      softwareHelp: DOCS_URL,
+      featureList: [
+        'JSON-oriented object modeling with OBNT',
+        'Parsing and serialization across JSON, YAML, and Java Properties',
+        'JSON Path and JSON Pointer navigation',
+        'JSON Patch, JSON Merge Patch, and indexed merge',
+        'JSON Schema Draft 2020-12 validation',
+        'Object graph mapping and transformation',
+      ],
       publisher: ORGANIZATION_SCHEMA,
     }
   }
@@ -178,6 +192,7 @@ function buildPageSchema(pagePath: string, pageTitle: string, description: strin
     '@type': pagePath === '/docs/changelog' ? 'CollectionPage' : 'TechArticle',
     headline: pageTitle,
     description,
+    keywords: DEFAULT_KEYWORDS,
     url: canonical,
     mainEntityOfPage: canonical,
     about: {
@@ -214,7 +229,9 @@ export default withMermaid(defineConfig({
       gtag('js', new Date());
       gtag('config', 'G-KBSJRCWQ4V');
     `],
+    ['meta', { name: 'application-name', content: SITE_NAME }],
     ['meta', { name: 'author', content: 'sjf4j-projects' }],
+    ['meta', { name: 'keywords', content: DEFAULT_KEYWORDS }],
     ['meta', { property: 'og:site_name', content: 'SJF4J' }],
     ['meta', { property: 'og:locale', content: 'en_US' }],
     ['meta', { property: 'og:image', content: OG_IMAGE_URL }],
@@ -285,7 +302,7 @@ export default withMermaid(defineConfig({
         text: 'Features',
         items: [
           { text: 'Modeling (OBNT)', link: '/docs/modeling' },
-          { text: 'Parsing (JSON/YAML/...)', link: '/docs/parsing' },
+          { text: 'Parsing (Codec)', link: '/docs/parsing' },
           { text: 'Navigating (JSON Path)', link: '/docs/navigating' },
           { text: 'Patching (JSON Patch)', link: '/docs/patching' },
           { text: 'Validating (JSON Schema)', link: '/docs/validating' },

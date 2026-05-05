@@ -3,7 +3,7 @@ title: "Java JsonPath, JSON Pointer, and Query APIs"
 description: "Navigate, query, and update Java object graphs with RFC 9535 JsonPath, RFC 6901 JSON Pointer, and SJF4J query and mutation APIs."
 ---
 
-# Navigating (JSON Path)
+# Navigating
 SJF4J supports two standardized path syntaxes:
 - [JSON Path (RFC 9535)](https://www.rfc-editor.org/rfc/rfc9535)
 - [JSON Pointer (RFC 6901)](https://www.rfc-editor.org/rfc/rfc6901)

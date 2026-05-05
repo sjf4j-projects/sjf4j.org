@@ -1,13 +1,14 @@
 ---
-title: "Java JSON Patch, Merge Patch, and Partial Updates"
+title: "Java Patching: JSON Patch, Merge Patch, and Partial Updates"
 description: "Apply RFC 6902 JSON Patch and RFC 7386 JSON Merge Patch to existing Java object graphs, including JsonObject, JsonArray, Map, List, POJO, and JOJO nodes."
 ---
 
-# Patching (JSON Patch)
+# Patching
 
-SJF4J supports two standardized patch formats:
-- [JSON Patch (RFC 6902)](https://datatracker.ietf.org/doc/html/rfc6902)
-- [JSON Merge Patch (RFC 7386)](https://datatracker.ietf.org/doc/html/rfc7386)
+SJF4J supports three patching mechanisms:
+- [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902) via `JsonPatch`
+- [JSON Merge Patch](https://datatracker.ietf.org/doc/html/rfc7386) via `Patches.mergePatch(...)`
+- Indexed merge via `Patches.indexedMerge(...)`
 
 ## Patching with `JsonPatch`
 
@@ -54,7 +55,8 @@ Patch operations:
 - Stop immediately if any operation fails
 
 Patch execution is ***non-transactional***:
-- Patch application is atomic per operation.
+- Each operation is atomic
+- The overall patch is not
 - If an operation fails:
   - The patch process stops
   - An exception is thrown
@@ -129,7 +131,7 @@ OperationRegistry.register("add", (target, op) -> {     // The Standard 'add' op
 });
 ```
 
-## Merge Patch with `Patches`
+## Merge Patch and Indexed Merge
 
 SJF4J supports two merge-style patch APIs in addition to RFC 6902 `JsonPatch`:
 
@@ -147,7 +149,7 @@ Unlike JSON Patch (RFC 6902), [JSON Merge Patch (RFC 7386)](https://datatracker.
 
 `mergePatch(...)` follows RFC 7386 semantics:
 - If `patch` is not an object → it replaces the entire target root
-- If a field exists in both target and patch → replaced or recursively merged
+- If a field exists in both target and patch, it is either replaced or recursively merged
 - If a field in patch is `null` → removed from the target object
 - Nested objects → merged recursively
 - Arrays → replaced as a whole
@@ -248,7 +250,7 @@ Notes:
 - Fixed-size Java arrays cannot be truncated; such merges fail with `JsonException`
 
 
-## When to Use Patch
+## When to Use Patching
 
 Use patching when you need **in-place partial updates** on existing structures.
 
@@ -259,4 +261,3 @@ Typical use cases:
 - Incrementally updating state without reconstructing the entire object
 - Modifying deeply nested fields using precise path-based operations
 - Synchronizing changes (e.g. event-driven or diff-based updates)  
-

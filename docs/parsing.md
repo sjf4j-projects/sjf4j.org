@@ -3,7 +3,7 @@ title: "Parsing JSON, YAML, and Properties in Java"
 description: "Parse, serialize, and convert JSON, YAML, Java Properties, POJO, JOJO, and OBNT node structures through SJF4J's unified codec APIs."
 ---
 
-# Parsing (JSON/YAML/...)
+# Parsing
 
 `Sjf4j` provides a unified set of entry-point APIs,
 allowing data to move consistently between:
@@ -388,27 +388,27 @@ Use this when one value type needs different wire formats in different runtimes 
 
 Built-in `NodeValue`-style codecs registered by default:
 
-| Java type | Raw node type | Notes / built-in formats |
-| --- | --- | --- |
-| `URI` | `String` | URI string |
-| `URL` | `String` | URL string |
-| `UUID` | `String` | Canonical UUID string |
-| `Locale` | `String` | BCP 47 language tag |
-| `Currency` | `String` | ISO currency code |
-| `ZoneId` | `String` | Zone ID, such as `Asia/Shanghai` |
-| `Instant` | `String` / `Long` | Default string form; built-in formats: default/`iso`, `epochMillis` |
-| `LocalDate` | `String` | ISO-8601 date |
-| `LocalDateTime` | `String` | ISO-8601 local date-time |
-| `OffsetDateTime` | `String` | ISO-8601 offset date-time |
-| `ZonedDateTime` | `String` | ISO-8601 zoned date-time |
-| `Duration` | `String` | ISO-8601 duration |
-| `Period` | `String` | ISO-8601 period |
-| `Path` | `String` | Filesystem path string |
-| `File` | `String` | File path string |
-| `Pattern` | `String` | Regular-expression pattern |
-| `InetAddress` | `String` | Host address string |
-| `Date` | `String` | Serialized via `Instant` string |
-| `Calendar` | `String` | Serialized via zoned date-time string |
+| Java type        | Raw node type     | Notes / built-in formats                                            |
+|------------------|-------------------|---------------------------------------------------------------------|
+| `URI`            | `String`          | URI string                                                          |
+| `URL`            | `String`          | URL string                                                          |
+| `UUID`           | `String`          | Canonical UUID string                                               |
+| `Locale`         | `String`          | BCP 47 language tag                                                 |
+| `Currency`       | `String`          | ISO currency code                                                   |
+| `ZoneId`         | `String`          | Zone ID, such as `Asia/Shanghai`                                    |
+| `Instant`        | `String` / `Long` | Default string form; built-in formats: default/`iso`, `epochMillis` |
+| `LocalDate`      | `String`          | ISO-8601 date                                                       |
+| `LocalDateTime`  | `String`          | ISO-8601 local date-time                                            |
+| `OffsetDateTime` | `String`          | ISO-8601 offset date-time                                           |
+| `ZonedDateTime`  | `String`          | ISO-8601 zoned date-time                                            |
+| `Duration`       | `String`          | ISO-8601 duration                                                   |
+| `Period`         | `String`          | ISO-8601 period                                                     |
+| `Path`           | `String`          | Filesystem path string                                              |
+| `File`           | `String`          | File path string                                                    |
+| `Pattern`        | `String`          | Regular-expression pattern                                          |
+| `InetAddress`    | `String`          | Host address string                                                 |
+| `Date`           | `String`          | Serialized via `Instant` string                                     |
+| `Calendar`       | `String`          | Serialized via zoned date-time string                               |
 
 ### Using `@AnyOf`
 

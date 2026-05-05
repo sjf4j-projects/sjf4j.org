@@ -1,7 +1,7 @@
 {
   "name": "sjf4j-org",
   "version": "1.0.0",
-  "description": "Website: [sjf4j.org](https://sjf4j.org) — official documentation and landing page for [SJF4J](https://github.com/sjf4j-projects/sjf4j).",
+  "description": "Official website for SJF4J, a lightweight JSON facade and structural processing layer for Java.",
   "main": "index.js",
   "scripts": {
     "docs:dev": "vitepress dev",
@@ -14,14 +14,26 @@
     "type": "git",
     "url": "git+https://github.com/sjf4j-projects/sjf4j-org.git"
   },
-  "keywords": [],
+  "keywords": [
+    "sjf4j",
+    "java",
+    "json",
+    "json-facade",
+    "json-path",
+    "json-patch",
+    "json-schema",
+    "yaml",
+    "jackson",
+    "gson",
+    "fastjson2"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/sjf4j-projects/sjf4j-org/issues"
   },
-  "homepage": "https://github.com/sjf4j-projects/sjf4j-org#readme",
+  "homepage": "https://sjf4j.org/",
   "devDependencies": {
     "esbuild": "^0.28.0",
     "mermaid": "^11.12.3",

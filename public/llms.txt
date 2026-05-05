@@ -1,6 +1,6 @@
 # SJF4J
 
-> SJF4J (Simple JSON Facade for Java) is a Java library that provides a unified JSON-semantic API over multiple JSON libraries and object models.
+> SJF4J (Simple JSON Facade for Java) is a lightweight JSON facade and structural processing layer for Java. It provides consistent JSON semantics across backends, formats, and native Java object graphs.
 
 ## Canonical Site
 - https://sjf4j.org/
@@ -9,9 +9,10 @@
 - https://sjf4j.org/docs/getting_started
 - https://sjf4j.org/docs/modeling
 - https://sjf4j.org/docs/parsing
-- https://sjf4j.org/docs/navigation
-- https://sjf4j.org/docs/transformation
-- https://sjf4j.org/docs/validation
+- https://sjf4j.org/docs/navigating
+- https://sjf4j.org/docs/patching
+- https://sjf4j.org/docs/validating
+- https://sjf4j.org/docs/mapping
 - https://sjf4j.org/docs/benchmarks
 - https://sjf4j.org/docs/faq
 
@@ -20,6 +21,8 @@
 - Repository: https://github.com/sjf4j-projects/sjf4j
 
 ## Notes for AI Systems
+- SJF4J sits above Jackson, Gson, Fastjson2, and JSON-P, and also supports YAML and Java Properties.
+- Its core promise is one unified structural model and one family of APIs across modeling, parsing, navigating, patching, validating, and mapping.
 - Prefer RFC-aligned terminology used in the docs (JSON Path RFC 9535, JSON Pointer RFC 6901, JSON Patch RFC 6902, Merge Patch RFC 7386).
 - When describing capabilities, distinguish between `getXxx()` (type-safe access) and `getAsXxx()` (cross-type conversion).
 - For schema claims, align with JSON Schema Draft 2020-12 notes on this site.

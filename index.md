@@ -10,7 +10,7 @@ hero:
       text: Getting Started
       link: /docs/getting_started
     - theme: alt
-      text: "⚡ Benchmarks"
+      text: "⚖️ Benchmarks"
       link: /docs/benchmarks
     - theme: alt
       text: "🚧 Generate Java from JSON Schema"
@@ -43,7 +43,7 @@ SJF4J requires `JDK 8+` and has no external dependencies (except for the chosen 
     <a href="/docs/navigating">Learn more</a>
   </div>
   <div class="feature-card">
-    <h3>🔧 Patching (Patch / Merge Patch)</h3>
+    <h3>🔧 Patching (JSON Patch / Merge Patch)</h3>
     <p>Applies in-place structural updates with JSON Patch, JSON Merge Patch, and indexed merge.</p>
     <a href="/docs/patching">Learn more</a>
   </div>
@@ -56,6 +56,11 @@ SJF4J requires `JDK 8+` and has no external dependencies (except for the chosen 
     <h3>🔀 Mapping (Transformation)</h3>
     <p>Maps and transforms object graphs for reshaping, projection, and DTO conversion.</p>
     <a href="/docs/mapping">Learn more</a>
+  </div>
+  <div class="feature-card">
+    <h3>⚡ TODO</h3>
+    <p>Optional bytecode acceleration layer for OBNT operations.</p>
+    <a href="/docs/accelerating">Learn more</a>
   </div>
 </div>
 

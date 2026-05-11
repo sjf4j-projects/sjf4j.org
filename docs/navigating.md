@@ -188,13 +188,9 @@ JsonPath.compile("$..version").compute(jo, (parent, current) ->
 ```
 
 
-## JSON Path
+## JSON Path Syntax
 SJF4J fully supports the [JSON Path (RFC 9535)](https://www.rfc-editor.org/rfc/rfc9535) specification,
 including `filters`, `functions`, `descent`, `unions`, `slicing`, `function calls`, and so on.
-
-### Core Syntax
-
-Core JSON Path syntax supported by SJF4J:
 
 | Syntax        | Description                 | Example                    |
 |---------------|-----------------------------|----------------------------|
@@ -215,9 +211,7 @@ Core JSON Path syntax supported by SJF4J:
 
 > **Note**: `[+]` is an extension, not part of RFC 9535. It means append and is only valid in mutation contexts such as `add()` or `ensurePut()`.
 
-### Filter Expressions
-
-Use filter expressions when you need to select nodes by value, comparison, or boolean conditions.
+**Filter Expressions**
 
 | Operator                | Description                    | Example                            |
 |-------------------------|--------------------------------|------------------------------------|
@@ -238,8 +232,6 @@ Integer cnt = jo.evalByPath("$.a[?@>3.5].count()", Integer.class);
 
 ### Built-in Functions  
 
-SJF4J provides built-in functions for common counting, aggregation, matching, and value-extraction scenarios.
-
 | Function             | Description                                                               | Example                           |
 |----------------------|---------------------------------------------------------------------------|-----------------------------------|
 | `length()`           | String/array/object length                                                | `$[?length(@.authors) >= 5]`      |
@@ -254,8 +246,6 @@ SJF4J provides built-in functions for common counting, aggregation, matching, an
 > In filter context, functions operate on the result of the inner path expression.
 
 ### Define custom functions
-
-If the built-in functions are not enough, you can register your own functions and call them from path expressions.
 
 Custom functions can be registered globally via `FunctionRegistry`:
 ```java
@@ -289,32 +279,20 @@ String s = jo.getStringByPath("/scores/3");
 ```
 
 
-## Processing with NodeStream
+## Stream-Based Processing
 
 `NodeStream` enables declarative, pipeline-style processing on OBNT.
-
-If you already know JDK 8 `Stream`, the mental model is almost the same:
-
-- use a path expression to **select** values
-- then apply normal stream operations such as `filter`, `map`, `collect`, `findFirst`, and `toList`
-- each path-based stage works on the result of the previous stage
-
-In other words, you can think of `NodeStream` as **"JSON/OBNT navigation + Java Stream processing"**.
 
 ```java
 List<String> tags = NodeStream.of(node)
         .findByPath("$.tags[*]", String.class)
-        .filter(t -> t.length() > 3)                    // Same idea as Stream.filter(...)
+        .filter(t -> t.length() > 3)                    // Programmatic filtering
         .toList();
 ```
-
-This is similar to first selecting `tags`, then continuing with a normal Java stream pipeline.
 
 **Multi-Stage Evaluation**
 
 Each stage treats the previous stage’s result as the new root.
-This is similar to taking the output of one stream step and feeding it into the next step.
-
 ```java
 int x = jo.stream()
         .findByPath("$..profile", JsonObject.class)     // Primary
@@ -324,20 +302,14 @@ int x = jo.stream()
         .orElse(4);
 ```
 
-Here, `findByPath("$..profile", ...)` finds all matching `profile` objects first.
-Then `getByPath("$.x", ...)` reads `x` from each matched profile object, just like a follow-up transformation step.
-
 **Programmatic Aggregation**
 
 ```java
 double avgScore = jo.stream()
         .find("$.scores[*]", Double.class)
-        .map(d -> d < 60 ? 60 : d)                      // Same idea as Stream.map(...)
+        .map(d -> d < 60 ? 60 : d)                      // Custom normalization
         .collect(Collectors.averagingDouble(s -> s));
 ```
-
-Use this style when path syntax is good for navigation, but Java code is clearer for business rules,
-normalization, or aggregation.
 
 
 ## Performance

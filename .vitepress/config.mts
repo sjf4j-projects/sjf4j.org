@@ -306,7 +306,8 @@ export default withMermaid(defineConfig({
           { text: 'Navigating (JSON Path)', link: '/docs/navigating' },
           { text: 'Patching (JSON Patch)', link: '/docs/patching' },
           { text: 'Validating (JSON Schema)', link: '/docs/validating' },
-          { text: 'Mapping (Transformation)', link: '/docs/mapping' }
+          { text: 'Mapping (Transformation)', link: '/docs/mapping' },
+          { text: 'Accelerating (Bytecode)', link: '/docs/accelerating' }
         ],
       },
       {

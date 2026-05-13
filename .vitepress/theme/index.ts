@@ -65,6 +65,20 @@ const theme: Theme = {
           h(
             'a',
             {
+              href: 'https://javadoc.io/doc/org.sjf4j/sjf4j',
+              target: '_blank',
+              rel: 'noreferrer',
+            },
+            [
+              h('img', {
+                alt: 'javadoc',
+                src: 'https://javadoc.io/badge2/org.sjf4j/sjf4j/javadoc.svg',
+              }),
+            ]
+          ),
+          h(
+            'a',
+            {
               href: 'https://github.com/sjf4j-projects/sjf4j/stargazers',
               target: '_blank',
               rel: 'noreferrer',

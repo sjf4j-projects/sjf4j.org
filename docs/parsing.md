@@ -410,9 +410,9 @@ Built-in `NodeValue`-style codecs registered by default:
 | `Date`           | `String`          | Serialized via `Instant` string                                     |
 | `Calendar`       | `String`          | Serialized via zoned date-time string                               |
 
-### Using `@AnyOf`
+### Using `@OneOf`
 
-`@AnyOf` enables polymorphic binding by mapping one logical type to multiple concrete types.
+`@OneOf` enables polymorphic binding by mapping one logical type to multiple concrete types.
 
 It supports three practical patterns:
 
@@ -423,9 +423,9 @@ It supports three practical patterns:
 #### 1) Discriminator on current object
 
 ```java
-@AnyOf(key = "kind", value = {
-    @AnyOf.Mapping(value = Cat.class, when = "cat"),
-    @AnyOf.Mapping(value = Dog.class, when = "dog")
+@OneOf(key = "kind", value = {
+    @OneOf.Mapping(value = Cat.class, when = "cat"),
+    @OneOf.Mapping(value = Dog.class, when = "dog")
 })
 class Animal {
     String kind;
@@ -448,14 +448,14 @@ Animal a = Sjf4j.global().fromJson(
 class ParentZoo {
     String kind;
 
-    @AnyOf(
-        scope = AnyOf.Scope.PARENT,
+    @OneOf(
+        scope = OneOf.Scope.PARENT,
         key = "kind",
         value = {
-            @AnyOf.Mapping(value = Cat.class, when = "cat"),
-            @AnyOf.Mapping(value = Dog.class, when = "dog")
+            @OneOf.Mapping(value = Cat.class, when = "cat"),
+            @OneOf.Mapping(value = Dog.class, when = "dog")
         },
-        onNoMatch = AnyOf.OnNoMatch.FAILBACK_NULL
+        onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL
     )
     Animal pet;
 }
@@ -472,9 +472,9 @@ ParentZoo z = Sjf4j.global().fromJson(
 #### 3) No discriminator: bind by JSON shape
 
 ```java
-@AnyOf(value = {
-    @AnyOf.Mapping(PolyObj.class),
-    @AnyOf.Mapping(PolyArr.class)
+@OneOf(value = {
+    @OneOf.Mapping(PolyObj.class),
+    @OneOf.Mapping(PolyArr.class)
 })
 interface Poly {}
 

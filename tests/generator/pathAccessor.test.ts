@@ -42,7 +42,7 @@ describe('generator path accessors', () => {
     })
 
     expect(code).toContain('import org.sjf4j.path.JsonPath;')
-    expect(code).toContain('private static final JsonPath PATH_CUSTOMER_EMAIL = JsonPath.compile("$.customer.email");')
+    expect(code).toContain('private static final JsonPath PATH_CUSTOMER_EMAIL = JsonPath.parse("$.customer.email");')
     expect(code).toContain('public String getCustomerEmail() {')
     expect(code).toContain('return PATH_CUSTOMER_EMAIL.getString(this);')
     expect(code).toContain('public void setCustomerEmail(String value) {')
@@ -119,7 +119,7 @@ describe('generator path accessors', () => {
     })
 
     expect(code).toContain('public List<String> getProfileTags() {')
-    expect(code).toContain('private static final JsonPath PATH_PROFILE_TAGS = JsonPath.compile("$.profile.tags");')
+    expect(code).toContain('private static final JsonPath PATH_PROFILE_TAGS = JsonPath.parse("$.profile.tags");')
     expect(code).toContain('return PATH_PROFILE_TAGS.getList(this, String.class);')
     expect(code).toContain('public LocalDateTime getProfileCreatedAt() {')
     expect(code).toContain('return PATH_PROFILE_CREATED_AT.get(this, LocalDateTime.class);')
@@ -146,12 +146,12 @@ describe('generator path accessors', () => {
       numberType: 'double',
     })
 
-    expect(code).toContain('private static final JsonPath PATH_META_ENABLED = JsonPath.compile("$.meta.enabled");')
+    expect(code).toContain('private static final JsonPath PATH_META_ENABLED = JsonPath.parse("$.meta.enabled");')
     expect(code).toContain('public boolean isMetaEnabled() {')
     expect(code).toContain('return PATH_META_ENABLED.getBoolean(this, false);')
-    expect(code).toContain('private static final JsonPath PATH_META_WEIGHT = JsonPath.compile("$.meta.weight");')
+    expect(code).toContain('private static final JsonPath PATH_META_WEIGHT = JsonPath.parse("$.meta.weight");')
     expect(code).toContain('return PATH_META_WEIGHT.getDouble(this, 0d);')
-    expect(code).toContain('private static final JsonPath PATH_META_COUNT = JsonPath.compile("$.meta.count");')
+    expect(code).toContain('private static final JsonPath PATH_META_COUNT = JsonPath.parse("$.meta.count");')
     expect(code).toContain('return PATH_META_COUNT.getInt(this, 0);')
     expect(code).not.toContain('final Boolean value = PATH_META_ENABLED.getBoolean(this);')
     expect(code).not.toContain('final Double value = PATH_META_WEIGHT.getDouble(this);')

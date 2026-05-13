@@ -110,7 +110,7 @@ pageClass: generator-page
 
 - Path accessors are generated only on the root class.
 - Root direct members do not generate path accessors.
-- Path accessors without index parameters use precompiled `static final JsonPath` constants via `JsonPath.compile(...)` on the root class.
+- Path accessors without index parameters use pre-parsed `static final JsonPath` constants via `JsonPath.parse(...)` on the root class.
 - Path accessors with one or more index parameters continue to use `JsonObject` `*ByPath` APIs and `ensurePutByPath(path, value)` directly.
 - Primitive `boolean` path getters use JavaBean-style `isXxx()` naming; boxed `Boolean` path getters continue to use `getXxx()`.
 - Getter generation prefers dedicated `*ByPath` APIs when available; otherwise it falls back to typed access such as `getByPath(path, LocalDateTime.class)`.

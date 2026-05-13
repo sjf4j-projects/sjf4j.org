@@ -570,7 +570,7 @@ function renderPathAccessorBlock(
 
     if (usesConstantPath) {
       imports.add('org.sjf4j.path.JsonPath')
-      pathConstantLines.push(`${memberIndent}private static final JsonPath ${pathReference} = JsonPath.compile(${buildJsonPathLiteral(field.path)});`)
+      pathConstantLines.push(`${memberIndent}private static final JsonPath ${pathReference} = JsonPath.parse(${buildJsonPathLiteral(field.path)});`)
     }
 
     const getterBody = usesConstantPath

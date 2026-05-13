@@ -12,19 +12,21 @@ no intermediate JSON serialization or AST conversion is required.
 
 ## Overview
 
-These three APIs serve different roles:
+These APIs serve different roles:
 
 | API | Primary role | Typical use |
 | --- | --- | --- |
-| `JsonSchema` | One schema document at runtime | Parse, compile, and validate against a specific schema |
-| `SchemaRegistry` | Shared schema resource store | Register / preload schemas that will be referenced by `$ref` or reused across compilations |
-| `SchemaValidator` | Annotation-driven validation entry point | Validate `@ValidJsonSchema` POJOs with convention-based lookup, preload support, and schema-chain caching |
+| `JsonSchema` | One parsed schema document | Parse a schema document and create a reusable `SchemaPlan` |
+| `SchemaPlan` | One compiled validation plan | Reuse compiled validators across many validation calls |
+| `SchemaRegistry` | Shared schema resource store | Index / register schemas that will be referenced by `$ref` or reused across plan creation |
+| `SchemaValidator` | Annotation-driven validation entry point | Validate `@ValidJsonSchema` POJOs with convention-based lookup, explicit `load(...)` support, and schema-chain caching |
 
 Typical relationship:
 
-- `JsonSchema` is the core runtime validation unit
-- `SchemaRegistry` helps multiple schemas resolve each other
-- `SchemaValidator` builds on both for class-oriented validation workflows
+- `JsonSchema` is the parsed schema model
+- `SchemaPlan` is the reusable compiled validator
+- `SchemaRegistry` helps multiple schema resources resolve each other
+- `SchemaValidator` builds on plans and registries for class-oriented validation workflows
 
 ## Using `JsonSchema`
 
@@ -43,10 +45,10 @@ JsonSchema schema = JsonSchema.fromJson("""
     "type": "number"
 }
 """);
-schema.compile();
+SchemaPlan plan = schema.createPlan();
 
-assertTrue(schema.isValid(1));
-assertFalse(schema.isValid("a"));
+assertTrue(plan.isValid(1));
+assertFalse(plan.isValid("a"));
 ```
 
 Example: validating object `properties`
@@ -61,32 +63,41 @@ JsonSchema schema = JsonSchema.fromJson("""
     }
 }
 """);
-schema.compile();
+SchemaPlan plan = schema.createPlan();
 
 Map<String, Object> map = Map.of("name", "Alice");
-assertTrue(schema.isValid(map));                    // Validate on Map
+assertTrue(plan.isValid(map));                    // Validate on Map
 
 MyPojo pojo = new MyPojo();
 pojo.setName("Tom");
-assertFalse(schema.isValid(pojo));                  // Validate on POJO
+assertFalse(plan.isValid(pojo));                  // Validate on POJO
 ```
 
 ### Validation API
 
-Common `JsonSchema` entry points:
+Common `SchemaPlan` entry points:
 
 ```java
 ValidationResult validate(Object node);
 // returns a full `ValidationResult`
 
-ValidationResult validateFailFast(Object node);
-// returns as soon as the first validation error is found
+ValidationResult validate(Object node, ValidationOptions options);
+// use `ValidationOptions.FAILFAST` or a custom builder when needed
 
 boolean isValid(Object node);
 // is a convenience boolean check with fail-fast semantics
 
 void requireValid(Object node);
 // throws ValidationException if the value is invalid
+```
+
+Example:
+
+```java
+SchemaPlan plan = schema.createPlan();
+
+ValidationResult full = plan.validate(node);
+ValidationResult failFast = plan.validate(node, ValidationOptions.FAILFAST);
 ```
 
 ### Schema References (`$ref` / `$dynamicRef`)
@@ -109,7 +120,7 @@ Supported reference patterns include:
 Example:
 
 ```java
-JsonSchema schema = JsonSchema.fromJson("""
+SchemaPlan plan = JsonSchema.fromJson("""
 {
     "$defs": {
         "user": {
@@ -121,8 +132,7 @@ JsonSchema schema = JsonSchema.fromJson("""
     },
     "$ref": "#/$defs/user"
 }
-""");
-schema.compile();
+""").createPlan();
 ```
 
 Important operational notes:
@@ -135,8 +145,8 @@ Important operational notes:
 
 ## Using `SchemaRegistry`
 
-`SchemaRegistry` stores compiled schema resources by absolute URI.
-Use it when schemas reference each other, or when you want to preload and reuse shared schema resources across multiple validations.
+`SchemaRegistry` stores indexed schema resources and compiled root plans by absolute URI.
+Use it when schemas reference each other, or when you want to preload and reuse shared schema resources across multiple plan creations.
 
 It also sits behind SJF4J's built-in Draft 2020-12 meta-schema resources.
 
@@ -155,18 +165,18 @@ JsonSchema child = JsonSchema.fromJson("""
 }
 """);
 
-SchemaRegistry registry = new SchemaRegistry(base);
-child.compile(registry);
+SchemaRegistry registry = new SchemaRegistry().index(base);
+SchemaPlan childPlan = child.createPlan(registry);
 
-assertTrue(child.isValid(1));
-assertFalse(child.isValid("a"));
+assertTrue(childPlan.isValid(1));
+assertFalse(childPlan.isValid("a"));
 ```
 
-You can also register a schema under an explicit alias URI:
+When a root schema is loaded from a local file or classpath location, index or register it with an explicit retrieval URI:
 
 ```java
 SchemaRegistry registry = new SchemaRegistry();
-registry.register(URI.create("https://example.org/alias.json"), schema);
+registry.index(URI.create("file:///schemas/root.json"), schema);
 ```
 
 ### Two URIs: retrieval URI vs canonical URI
@@ -227,7 +237,7 @@ classpath:///json-schemas/
 ```
 It can be configured if necessary:
 ```java
-SchemaValidator validator = new SchemaValidator("file:///tmp/json-schemas/");
+SchemaValidator validator = new SchemaValidator("file:///tmp/json-schemas/", null, null);
 ```
 
 Using references via `ref`:
@@ -249,8 +259,8 @@ If neither `value` nor `ref` is specified, SJF4J tries:
 - `<snake-name>.json`, e.g. `user_dto3.json`
 
 Supported schemes:
-- `classpath:///`
-- `file:///`
+- `classpath:/`
+- `file:/`
 
 When `ref` includes a fragment, SJF4J resolves it in this order:
 
@@ -265,17 +275,18 @@ So these are all valid:
 - `others.json#node`
 - `others.json#/$defs/user`
 
-### Preloading shared schemas
+### Loading shared schemas
 
 When multiple schema files reference each other, it is often convenient to preload them once:
 
 ```java
-SchemaValidator validator = new SchemaValidator()
-        .preload("common.json", "address.json")
-        .preloadDirectory("file:///tmp/json-schemas/shared/");
+SchemaValidator validator = new SchemaValidator("file:/tmp/json-schemas/", null, null);
+validator.load("common.json");
+validator.load("address.json");
 ```
 
-This is especially useful when your `ref` targets use logical identifiers such as `https://example.org/...` and you want to register the corresponding local schema files up front.
+This is especially useful when your `ref` targets use logical identifiers such as `https://example.org/...` 
+and you want to register the corresponding local schema files up front.
 
 
 ## JSON Schema vs JSR 380

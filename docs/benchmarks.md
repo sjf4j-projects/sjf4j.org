@@ -38,7 +38,7 @@ ReflectionBenchmark.reflection_setter_lambda         avgt   24   0.996 ± 0.007 
 This benchmark measures the additional structural overhead introduced by SJF4J on top of native JSON libraries.
 
 SJF4J performs encoding and decoding on top of the underlying JSON parsers.  
-It adds structural capabilities to the OBNT model, such as `JOJO`, `@NodeValue`, and `@AnyOf`,
+It adds structural capabilities to the OBNT model, such as `JOJO`, `@NodeValue`, and `@OneOf`,
 while attempting to minimize additional overhead.
 
 To bridge different JSON libraries, SJF4J provides three streaming integration modes:
@@ -207,6 +207,14 @@ For native Java object graphs, `Map/List` is still fastest. `JOJO` stays close t
 
 ## JSON Schema Validation Benchmark
 
+### Creek Service
+
+- Creek Service's [JVM JSON Schema validation comparison](https://www.creekservice.org/json-schema-validation-comparison/) provides an additional third-party benchmark view.
+- In its [performance comparison](https://www.creekservice.org/json-schema-validation-comparison/performance), 
+  SJF4J shows strong **pure validation** performance and is especially effective in **serde-style** workflows, where it can validate Java object graphs directly without an extra parse/build step.
+
+### Bowtie
+
 According to the official JSON Schema [Bowtie](https://bowtie.report/) benchmark, 
 performance can be evaluated locally using:
 ```shell
@@ -250,6 +258,8 @@ Sample result:
  No of Levels 10   32ms +- 1ms      75ms +- 4ms: 2.37x slower   75ms +- 3ms: 2.36x slower                  
                    Reference        2.34x slower                2.37x slower                               
 ```
+
 **Summary**:  
-- In Bowtie’s draft 2020-12 benchmark, SJF4J delivers **high performance** 
+- **Creek Service**: SJF4J stands out both for fast pure validation and for efficient serde-style validation over Java object graphs.
+- **Bowtie**: SJF4J delivers **high performance** 
   and consistently ranks among the top-tier of Java implementations.

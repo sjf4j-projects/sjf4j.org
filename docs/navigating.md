@@ -13,12 +13,12 @@ SJF4J provides a unified, JSON-semantic path engine that works on all OBNT nodes
 
 
 ### Use `JsonPath`
-`JsonPath` represents a compiled, reusable path expression.  
-`JsonPath.compile(...)` accepts both JSON Path expressions such as `$.user.role`
+`JsonPath` represents a parsed, reusable path expression.  
+`JsonPath.parse(...)` accepts both JSON Path expressions such as `$.user.role`
 and JSON Pointer expressions such as `/user/role`; the syntax is detected automatically.
 
 ```java
-JsonPath path = JsonPath.compile("$.user.role");
+JsonPath path = JsonPath.parse("$.user.role");
 
 Object role = path.getNode(node);
 // Returns the single matched node (or null if no match)
@@ -26,7 +26,7 @@ Object role = path.getNode(node);
 
 **Compile Once, Reuse Many Times**
 ```java
-JsonPath path = JsonPath.compile("$.scores[*]");
+JsonPath path = JsonPath.parse("$.scores[*]");
 
 List<Integer> scores1 = path.find(node, Integer.class);
 List<Integer> scores2 = path.find(jo, Integer.class);
@@ -39,7 +39,7 @@ These methods follow the naming pattern `*ByPath()`.
 
 For example:
 ```java
-JsonPath.compile("$.user.role").getString(jo);
+JsonPath.parse("$.user.role").getString(jo);
 
 // Equivalent to:
 jo.getStringByPath("$.user.role");
@@ -80,9 +80,9 @@ String json = """
 """;
 JsonObject jo = JsonObject.fromJson(json);
 
-String role1 = JsonPath.compile("$.user.role").getString(jo);
-String role2 = JsonPath.compile("$.user.role").getAsString(jo);
-String role3 = JsonPath.compile("$.user.role").get(jo, String.class);
+String role1 = JsonPath.parse("$.user.role").getString(jo);
+String role2 = JsonPath.parse("$.user.role").getAsString(jo);
+String role3 = JsonPath.parse("$.user.role").get(jo, String.class);
 // They got the same result here
 ```
 
@@ -126,9 +126,9 @@ JsonObject jo = JsonObject.fromJson("""
 }
 """);
 
-JsonPath.compile("$.scores[+]").add(jo, 100);       // append
-JsonPath.compile("/name").replace(jo, "Alice");     // target must exist
-JsonPath.compile("$.active").remove(jo);            // remove target
+JsonPath.parse("$.scores[+]").add(jo, 100);       // append
+JsonPath.parse("/name").replace(jo, "Alice");     // target must exist
+JsonPath.parse("$.active").remove(jo);            // remove target
 ```
 
 Result:
@@ -151,7 +151,7 @@ Result:
   - Index > size → ERROR
 
 ```java
-JsonPath.compile("/babies/2").put(jo, JsonObject.of("name", "Baby-3"));
+JsonPath.parse("/babies/2").put(jo, JsonObject.of("name", "Baby-3"));
 ```
 
 **`ensurePut(path, value)`**
@@ -181,7 +181,7 @@ If a segment exists but is null, it is treated as non-navigable and replaced wit
 
 
 ```java
-JsonPath.compile("$..version").compute(jo, (parent, current) -> 
+JsonPath.parse("$..version").compute(jo, (parent, current) -> 
         current != null 
         ? current 
         : Nodes.getInObject(parent, "ver"));
@@ -231,7 +231,7 @@ Example:
 ```java
 List<String> cheapBooks = jo.findByPath("$..book[?(@.price < 10)].title", String.class);
 
-JsonObject subNode = JsonPath.compile("$[?(@.name =~ /^B/)]").getJsonObject(jo);
+JsonObject subNode = JsonPath.parse("$[?(@.name =~ /^B/)]").getJsonObject(jo);
 
 Integer cnt = jo.evalByPath("$.a[?@>3.5].count()", Integer.class);
 ```
@@ -283,7 +283,7 @@ String result = jo.evalByPath("$.hi()", String.class);
 but only accepts RFC 6901 pointer expressions.
 
 ```java
-JsonPointer.compile("/scores/2").remove(jo);
+JsonPointer.parse("/scores/2").remove(jo);
 
 String s = jo.getStringByPath("/scores/3");
 ```

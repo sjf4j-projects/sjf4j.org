@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added deprecated `JsonObject.toBuilder()` as a compatibility alias for `edit()` so existing builder-style call sites can migrate incrementally.
+
+### Changed
+
+### Removed
+
+### Fixed
 
 
 ## [1.2.3] - 2026.05.11

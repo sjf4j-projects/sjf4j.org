@@ -6,14 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Breaking Changes
+- Removed `AccessStrategy` and the `@NodeBinding(access = ...)` contract in favor of property-family discovery through `@NodeBinding(propertyStrategy = PropertyStrategy...)`.
+- Renamed POJO metadata APIs from field-oriented names to property-oriented names, including `NodeRegistry.FieldInfo` -> `PropertyInfo`, `fields`/`fieldCount` -> `properties`/`propertyCount`, and removal of `NodeRegistry.getFieldInfo(...)`.
+- Renamed `@NodeProperty.valueFormat` to `@NodeProperty.codecName` for clarity.
+
 ### Added
-- Added deprecated `JsonObject.toBuilder()` as a compatibility alias for `edit()` so existing builder-style call sites can migrate incrementally.
+- Added `PropertyStrategy` with `BEAN_ONLY`, `FIELD_ONLY`, `BEAN_FIELD`, and `FIELD_BEAN` modes for cached type-level POJO property discovery.
+- Added `@NodeIgnore` so types, fields, getters, and setters can be excluded from SJF4J property discovery — class-level `@NodeIgnore` works like Jackson's `@JsonIgnoreType`, excluding all properties referencing the annotated type.
+- Added `@NodeProperty.codecPattern` for DateTimeFormatter-based format patterns (e.g. `"yyyy-MM-dd"`), supported by `LocalDate`, `LocalDateTime`, `OffsetDateTime`, and `ZonedDateTime` value codecs.
+- Added `PatternedValueCodec<V, R>` optional interface for value codecs that support format pattern parameterization.
+- Added `ValueCodec` for `java.time.LocalTime` (supports `codecPattern`).
+- Added `ValueCodec` for `java.util.Optional` — flattens `Optional.of(x)` → `x`, `Optional.empty()` → `null` (like Jackson).
+- Added `ConcurrentHashMap` cache in `Types.resolveTypeArgument()` to memoize recursive generic type argument resolution results across repeated calls.
 
 ### Changed
+- Changed POJO/JOJO binding to discover merged property families across fields, bean accessors, and record components, with bean-first `BEAN_FIELD` now the default strategy.
+- Changed `@NodeProperty` to support bean methods in addition to fields and creator parameters, including method-level renames, aliases, and value-format metadata.
+- Changed shared/backend streaming and node-conversion paths to use property-oriented metadata consistently across Jackson 2, Jackson 3, Fastjson2, Gson, and the simple facade.
+- Changed `hasValueFormatBinding` / `hasPropertyValueFormatBinding` flags to check resolved value codecs instead of raw format strings, correctly reflecting both `codecName` and `codecPattern` bindings.
+- Changed runtime binding/codec exception types from `JsonException` to `BindingException` in `NodeRegistry` (20 sites), `StreamingIO`, `Jackson2StreamingIO`, `Fastjson2StreamingIO`, `Fastjson2Reader`, `JsonpReader`, and `SnakeReader`.
+- Changed 3 `RuntimeException` to `JsonException` in `ReflectUtil.analyzeNodeValue()`.
+- Changed streaming read paths to thread `NodeRegistry.TypeInfo` (instead of raw `OneOfInfo`) through `_readNode → _readObject / _readArray → _readMap / _readList / _readSet / _readArray`, eliminating redundant `registerTypeInfo()` lookups on each recursive descent. Applied to `StreamingIO`, `Jackson2StreamingIO`, and `Fastjson2StreamingIO`.
+- Renamed `ValueCodecInfo.getFormattedValueCodecInfo()` → `getValueCodecInfo()` and `formattedValueCodecs` → `namedValueCodecs` for clarity. Applied across all backend modules (Jackson 2, Jackson 3, Fastjson2, Gson, Simple) and the test suite.
 
 ### Removed
+- Removed the old field-oriented `AccessStrategy` type and field-oriented POJO metadata naming from the public binding API.
 
 ### Fixed
+- Fixed property binding consistency for renamed bean properties, field/bean family merging, `@OneOf`/value-format propagation, and creator-bound property conflict detection.
+- Fixed property discovery fail-fast behavior for ambiguous getter/setter selection, duplicate aliases/final names, and transient fields annotated with `@NodeProperty`.
+- Fixed `ReflectionBenchmark` and `SchemaBenchmark` JMH benchmarks to use current APIs (`pi.properties.get("name")` instead of removed `NodeRegistry.getPropertyInfo()`, `createPlan()` instead of removed `plan()`).
 
 
 ## [1.2.3] - 2026.05.11

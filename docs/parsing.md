@@ -80,15 +80,15 @@ Sjf4j sjf4j3 = Sjf4j.builder()
 
 ### `Sjf4j.builder()` options
 
-| Builder method | Purpose | Typical usage |
-| --- | --- | --- |
-| `jsonFacadeProvider(...)` | Select the JSON backend for this runtime. | `Jackson2JsonFacade.provider(...)`, `Jackson3JsonFacade.provider(...)`, `GsonJsonFacade.provider()`, `Fastjson2JsonFacade.provider()`, `SimpleJsonFacade.provider()` |
-| `yamlFacadeProvider(...)` | Override the YAML backend. | `SnakeYamlFacade.provider()` |
-| `propertiesFacadeProvider(...)` | Override the Java `Properties` facade. | Usually only needed for custom implementations. |
-| `nodeFacadeProvider(...)` | Override the in-memory node binding/conversion facade. | Usually only needed for custom implementations. |
-| `streamingMode(...)` | Control which streaming path the runtime prefers. | `AUTO`, `SHARED_IO`, `EXCLUSIVE_IO`, `PLUGIN_MODULE` |
-| `defaultValueFormat(type, format)` | Set the default named `ValueCodec` format for a value type in this runtime. | `defaultValueFormat(Instant.class, "epochMillis")` |
-| `includeNulls(boolean)` | Control whether JSON serialization keeps `null` object properties. | `includeNulls(false)` |
+| Builder method                     | Purpose                                                                     | Typical usage                                                                                                                                                        |
+|------------------------------------|-----------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `jsonFacadeProvider(...)`          | Select the JSON backend for this runtime.                                   | `Jackson2JsonFacade.provider(...)`, `Jackson3JsonFacade.provider(...)`, `GsonJsonFacade.provider()`, `Fastjson2JsonFacade.provider()`, `SimpleJsonFacade.provider()` |
+| `yamlFacadeProvider(...)`          | Override the YAML backend.                                                  | `SnakeYamlFacade.provider()`                                                                                                                                         |
+| `propertiesFacadeProvider(...)`    | Override the Java `Properties` facade.                                      | Usually only needed for custom implementations.                                                                                                                      |
+| `nodeFacadeProvider(...)`          | Override the in-memory node binding/conversion facade.                      | Usually only needed for custom implementations.                                                                                                                      |
+| `streamingMode(...)`               | Control which streaming path the runtime prefers.                           | `AUTO`, `SHARED_IO`, `EXCLUSIVE_IO`, `PLUGIN_MODULE`                                                                                                                 |
+| `defaultValueFormat(type, format)` | Set the default named `ValueCodec` format for a value type in this runtime. | `defaultValueFormat(Instant.class, "epochMillis")`                                                                                                                   |
+| `includeNulls(boolean)`            | Control whether JSON serialization keeps `null` object properties.          | `includeNulls(false)`                                                                                                                                                |
 
 Example:
 
@@ -123,30 +123,46 @@ User user3 = sjf4j.deepNode(user);
 
 ## Custom Node Binding
 
-For POJO / JOJO binding, SJF4J can customize property names, creator selection, naming strategy, access strategy, and JOJO dynamic-property behavior.
+For POJO / JOJO binding, SJF4J can customize property names, creator selection, naming strategy, 
+property discovery strategy, ignore rules, and JOJO dynamic-property behavior.
 
 ### Using `@NodeProperty`
 
-`@NodeProperty` can be used on fields and creator parameters.
+`@NodeProperty` can be used on fields, bean methods, and creator parameters.
 
 - `value`: declares the primary property name
 - `aliases`: accepts additional input names during reads
-- `valueFormat`: selects a named `ValueCodec` format for that field or parameter
+- `codecName`: selects a named `ValueCodec` variant for that field, method-backed property, or parameter
+- `codecPattern`: supplies a pattern for codecs that support parameterized formats; when both are present, `codecPattern` wins
 
 ```java
 class UserProfile {
-    @NodeProperty(value = "user_name", aliases = {"username", "userName"})
-    public String name;
+    private String name;
 
-    @NodeProperty(valueFormat = "epochMillis")
+    @NodeProperty(value = "user_name", aliases = {"username", "userName"})
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    @NodeProperty(codecName = "epochMillis")
     public Instant createdAt;
+
+    @NodeProperty(codecPattern = "yyyy-MM-dd")
+    public LocalDate birthday;
 }
 
 UserProfile user = Sjf4j.global().fromJson(
-    "{\"username\":\"Ada\",\"createdAt\":1710000000000}",
+    "{\"username\":\"Ada\",\"createdAt\":1710000000000,\"birthday\":\"2026-05-18\"}",
     UserProfile.class
 );
 ```
+
+Method-level `@NodeProperty("...")` renames the whole bean property family, so the getter, setter, creator parameter, 
+and aliases should agree on the same final JSON-facing property name.
 
 ### Using `@NodeCreator`
 
@@ -187,7 +203,7 @@ If a creator parameter does not have an explicit annotation, SJF4J can also bind
 
 SJF4J also recognizes common annotations from other JSON ecosystems during object binding:
 
-- Jackson / Jackson 3
+- Jackson 2 / Jackson 3
   - `@JsonProperty` → similar to `@NodeProperty("...")`
   - `@JsonAlias` → similar to `@NodeProperty(aliases = {...})`
   - `@JsonCreator` → similar to `@NodeCreator`
@@ -202,7 +218,7 @@ This makes it easy to reuse existing models, or mix SJF4J annotations with frame
 ### Using `@NodeBinding`
 
 `@NodeBinding` configures type-level binding behavior for a `POJO` or `JOJO`.
-It currently supports: `naming`, `access`, `readDynamic` and `writeDynamic`.
+It currently supports: `naming`, `propertyStrategy`, `readDynamic`, and `writeDynamic`.
 
 #### `naming` (`NamingStrategy`)
 
@@ -214,8 +230,8 @@ Supported strategies:
 ```java
 @NodeBinding(naming = NamingStrategy.SNAKE_CASE)
 public class User extends JsonObject {
-    private String userName;
-    private int loginCount;
+    public String userName;
+    public int loginCount;
 }
 
 User user = Sjf4j.global().fromJson(
@@ -232,22 +248,27 @@ assertNull(user.getString("userName"));
 ```
 
 Naming precedence (high → low):
-- `@NodeProperty` on field or creator parameter
+- `@NodeProperty` on a field, bean method, or creator parameter
 - `@NodeBinding(naming = ...)` on the type
 - identity naming (`userName` → `userName`)
 
-#### `access` (`AccessStrategy`)
+#### `propertyStrategy` (`PropertyStrategy`)
 
-- `BEAN_BASED` (default):
-  - public fields bind directly
-  - non-public members bind through bean getters/setters or other explicit binding metadata
-- `FIELD_BASED`:
-  - non-public fields may also bind directly
+`propertyStrategy` controls whether properties are discovered from bean accessors, fields, or both.
 
-Use `FIELD_BASED` when a `POJO` should bind non-public fields directly rather than through bean accessors only.
+- `BEAN_ONLY`: discover properties only from bean/record accessors.
+- `FIELD_ONLY`: discover properties only from declared fields, including non-public fields.
+  - using reflective field access rather than bean getters/setters.
+- `BEAN_FIELD` (default): bean-first discovery with field fallback.  
+  - Only `public` fields are auto-discovered here; 
+  - non-public fields participate only when explicitly bound, such as with `@NodeProperty`.
+  - This is the Jackson-like default.
+- `FIELD_BEAN`: field-first discovery with bean fallback. All eligible declared fields participate, including non-public ones.
+
+Use `FIELD_ONLY` when a POJO should bind directly against fields instead of JavaBean accessors.
 
 ```java
-@NodeBinding(access = AccessStrategy.FIELD_BASED)
+@NodeBinding(propertyStrategy = PropertyStrategy.FIELD_ONLY)
 class User {
     String userName;
     int loginCount;
@@ -301,6 +322,42 @@ assertEquals("{\"id\":1,\"name\":\"a\"}", Sjf4j.global().toJsonString(writeBook)
 - `writeDynamic = true` (default): write dynamic JOJO properties together with declared fields or properties
 - `writeDynamic = false`: write only declared fields or properties
 
+### Using `@NodeIgnore`
+
+`@NodeIgnore` excludes a type or property source from SJF4J property discovery.
+- On a field: that field does not participate in binding
+- On a getter or setter: that accessor is ignored for the bean property family
+- On a type: any property whose declared type is that class is excluded, similar to Jackson's `@JsonIgnoreType`
+
+```java
+@NodeIgnore
+class InternalNote {
+    public String text;
+}
+
+class UserProfile {
+    public String name;
+    public InternalNote note; // excluded because the type is ignored
+
+    @NodeIgnore
+    public String debugOnly; // excluded as a field-backed property
+
+    private String password;
+
+    @NodeIgnore
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}
+```
+
+If you ignore only one accessor, the property may still remain writable or readable through the other accessor or a field. 
+Ignore all participating sources when the property should disappear completely.
+
 
 ## Custom Node Type
 SJF4J allows custom Java types to participate in OBNT.
@@ -343,7 +400,8 @@ BigDay day = Sjf4j.global().fromJson("\"2026-01-01\"", BigDay.class);
 assertEquals("\"2026-01-01\"", Sjf4j.global().toJson(day));
 ```
 
-`@NodeValue` types also participate in `valueFormat` selection when multiple named `ValueCodec` formats are registered for the same logical value type.
+`@NodeValue` types also participate in named codec selection, 
+when multiple `ValueCodec` variants are registered for the same logical value type.
 
 **Or register a `ValueCodec`**  
 For third-party or JDK types:
@@ -388,27 +446,32 @@ Use this when one value type needs different wire formats in different runtimes 
 
 Built-in `NodeValue`-style codecs registered by default:
 
-| Java type        | Raw node type     | Notes / built-in formats                                            |
-|------------------|-------------------|---------------------------------------------------------------------|
-| `URI`            | `String`          | URI string                                                          |
-| `URL`            | `String`          | URL string                                                          |
-| `UUID`           | `String`          | Canonical UUID string                                               |
-| `Locale`         | `String`          | BCP 47 language tag                                                 |
-| `Currency`       | `String`          | ISO currency code                                                   |
-| `ZoneId`         | `String`          | Zone ID, such as `Asia/Shanghai`                                    |
-| `Instant`        | `String` / `Long` | Default string form; built-in formats: default/`iso`, `epochMillis` |
-| `LocalDate`      | `String`          | ISO-8601 date                                                       |
-| `LocalDateTime`  | `String`          | ISO-8601 local date-time                                            |
-| `OffsetDateTime` | `String`          | ISO-8601 offset date-time                                           |
-| `ZonedDateTime`  | `String`          | ISO-8601 zoned date-time                                            |
-| `Duration`       | `String`          | ISO-8601 duration                                                   |
-| `Period`         | `String`          | ISO-8601 period                                                     |
-| `Path`           | `String`          | Filesystem path string                                              |
-| `File`           | `String`          | File path string                                                    |
-| `Pattern`        | `String`          | Regular-expression pattern                                          |
-| `InetAddress`    | `String`          | Host address string                                                 |
-| `Date`           | `String`          | Serialized via `Instant` string                                     |
-| `Calendar`       | `String`          | Serialized via zoned date-time string                               |
+| Java type        | Raw node type     | Notes / built-in formats                                                                    |
+|------------------|-------------------|---------------------------------------------------------------------------------------------|
+| `URI`            | `String`          | URI string                                                                                  |
+| `URL`            | `String`          | URL string                                                                                  |
+| `UUID`           | `String`          | Canonical UUID string                                                                       |
+| `Locale`         | `String`          | BCP 47 language tag                                                                         |
+| `Currency`       | `String`          | ISO currency code                                                                           |
+| `ZoneId`         | `String`          | Zone ID, such as `Asia/Shanghai`                                                            |
+| `Instant`        | `String` / `Long` | Default string form; built-in formats: `iso`, `epochMillis`                                 |
+| `LocalDate`      | `String`          | ISO-8601 date; supports `codecPattern` (e.g. `yyyy-MM-dd`)                                  |
+| `LocalTime`      | `String`          | ISO-8601 local time; supports `codecPattern` (e.g. `HH:mm:ss`)                              |
+| `LocalDateTime`  | `String`          | ISO-8601 local date-time; supports `codecPattern` (e.g. `yyyy-MM-dd'T'HH:mm:ss`)            |
+| `OffsetDateTime` | `String`          | ISO-8601 offset date-time; supports `codecPattern` (e.g. `yyyy-MM-dd'T'HH:mm:ssXXX`)        |
+| `ZonedDateTime`  | `String`          | ISO-8601 zoned date-time; supports `codecPattern` (e.g. `yyyy-MM-dd'T'HH:mm:ssXXX'['VV']'`) |
+| `Duration`       | `String`          | ISO-8601 duration                                                                           |
+| `Period`         | `String`          | ISO-8601 period                                                                             |
+| `Path`           | `String`          | Filesystem path string                                                                      |
+| `File`           | `String`          | File path string                                                                            |
+| `Pattern`        | `String`          | Regular-expression pattern                                                                  |
+| `InetAddress`    | `String`          | Host address string                                                                         |
+| `Date`           | `String`          | Serialized via `Instant` string                                                             |
+| `Calendar`       | `String`          | Serialized via zoned date-time string                                                       |
+| `Optional<T>`    | `Object`          | Flattens `Optional.of(x)` → `x`, `Optional.empty()` → `null`                                |
+
+Built-in `codecPattern` support currently applies only to these temporal codecs: 
+`LocalDate`, `LocalTime`, `LocalDateTime`, `OffsetDateTime`, and `ZonedDateTime`.
 
 ### Using `@OneOf`
 

@@ -1,25 +1,25 @@
 # SJF4J — Simple JSON Facade for Java
 
 ![License](https://img.shields.io/github/license/sjf4j-projects/sjf4j)
-![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fsupported_versions.json)
-![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)
+[![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j)
 [![javadoc](https://javadoc.io/badge2/org.sjf4j/sjf4j/javadoc.svg)](https://javadoc.io/doc/org.sjf4j/sjf4j)
-![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)  
+![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fsupported_versions.json)  
 ![Build](https://img.shields.io/github/actions/workflow/status/sjf4j-projects/sjf4j/gradle.yml?branch=main)
 [![codecov](https://codecov.io/gh/sjf4j-projects/sjf4j/graph/badge.svg?branch=main)](https://codecov.io/gh/sjf4j-projects/sjf4j)
+![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)
 
-**SJF4J** is a lightweight JSON facade and structural processing layer for Java.
+SJF4J is a lightweight JSON facade and structural processing layer for Java.  
 It sits above multiple JSON libraries — including [Jackson](https://github.com/FasterXML/jackson-databind),
 [Gson](https://github.com/google/gson), [Fastjson2](https://github.com/alibaba/fastjson2),
 and [JSON-P](https://github.com/jakartaee/jsonp-api) — while also supporting YAML
 (via [SnakeYAML](https://github.com/snakeyaml/snakeyaml)) and Java Properties.
 
-SJF4J builds on established JSON standards and semantics to provide 
-a **consistent structural processing model across backends, data formats, and native Java object graphs**.  
-It provides one unified structural model and one family of APIs for [modeling](https://sjf4j.org/docs/modeling) (OBNT),
+SJF4J provides **consistent structural processing across backends, data formats, and native Java object graphs**, 
+built on established JSON standards and semantics.  
+It unifies [modeling](https://sjf4j.org/docs/modeling) (OBNT),
 [parsing](https://sjf4j.org/docs/parsing) (Codec), [navigating](https://sjf4j.org/docs/navigating) (JSON Path), 
 [patching](https://sjf4j.org/docs/patching) (JSON Patch), [validating](https://sjf4j.org/docs/validating) (JSON Schema), 
-and [mapping](https://sjf4j.org/docs/mapping) (Transformation).
+and [mapping](https://sjf4j.org/docs/mapping) (Transformation) under one API model.
 
 
 ## Install
@@ -113,8 +113,7 @@ jo.putByPath("$.scores.art", 95);
 String out = jo.toJson();
 ```
 
-Starting from this example, the sections below expand into the broader SJF4J feature set.
-
+`JsonObject` is one of SJF4J’s dynamic JSON object representations. Others include `Map`, `POJO`, and `JOJO`.
 
 ### 5-minutes walkthrough
 
@@ -131,8 +130,10 @@ Modeling  →  Parsing  →  Navigating  →  Patching  →  Validating  →  Ma
 
 #### Modeling
 
-**JOJO (JSON Object Java Object)** extends `JsonObject` and unifies typed Java fields 
-with dynamic JSON properties in a single object model.
+For demonstration purposes, this examples use JOJO (`JsonObject`-based objects) since it handles typed fields and dynamic properties, 
+making it suitable for objects with extra or unknown data.
+
+> **Note**: Standard POJOs are fully supported as well, with equivalent navigation, mutation, and validation capabilities.
 
 Define a JOJO `Student`:
 ```java
@@ -145,6 +146,8 @@ public class Student extends JsonObject {
 ```
 
 Learn more → [Modeling (OBNT)](https://sjf4j.org/docs/modeling)
+
+
 
 #### Parsing
 
@@ -218,7 +221,7 @@ Learn more → [Patching (JSON Patch)](https://sjf4j.org/docs/patching)
 
 #### Validating
 
-Declare `JSON Schema` (Draft 2020-12) constraints with `@ValidJsonSchema` (like Jakarta Validation style).
+Declare `JSON Schema` (Draft 2020-12) constraints with `@ValidJsonSchema` (Jakarta/Bean Validation style).
 ```java
 @ValidJsonSchema("""
 {
@@ -312,6 +315,6 @@ and thoughtful feedback.
 A good place to start is by [opening an issue](https://github.com/sjf4j-projects/sjf4j/issues/new).
 
 JSON is a simple and perhaps the most widely used structured data format today,
-backed by an entire ecosystem of standards, including RFCs.
+and is backed by an entire ecosystem of standards, including RFCs.
 
 > *So, what might JSON-oriented development look like in Java?*

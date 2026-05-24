@@ -6,7 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Breaking Changes
+- Renamed path and node mutation helpers to make their write semantics explicit:
+  - `JsonPath.isSingle()` -> `isSinglePut()`.
+  - `JsonPath.putIfPresent(...)` -> `putIfParentPresent(...)`.
+  - `JsonPath.remove(...)` -> `removeIfPresent(...)`.
+  - `JsonContainer.putIfPresentByPath(...)` -> `putIfParentPresentByPath(...)`.
+  - `JsonContainer.removeByPath(...)` -> `removeIfPresentByPath(...)`.
+  - `JsonContainer.asMapByPath(path, clazz)` -> `getMapByPath(path, clazz)`.
+  - `JsonObject.replace(...)` -> `replaceAll(...)`.
+  - `JsonObject.Builder.putIfPresentByPath(...)` -> `putIfParentPresentByPath(...)`.
+  - `Nodes.anyMatchObject(...)` / `anyMatchArray(...)` -> `anyMatchInObject(...)` / `anyMatchInArray(...)`.
+  - `Nodes.replaceInObject(...)` and `FacadeNodes.replaceInObject(...)` -> `replaceAllInObject(...)`.
+- Split the mixed read/write access metadata helpers into explicit read and write variants:
+  - `Nodes.accessInObject(...)` / `accessInArray(...)` -> `getAccessInObject(...)` / `getAccessInArray(...)` for read paths and `putAccessInObject(...)` / `putAccessInArray(...)` for write/auto-create paths.
+  - Matching `FacadeNodes`, Jackson 2, Jackson 3, and Gson facade helpers use the same `getAccess*` / `putAccess*` naming.
+- Removed the map-style `JsonObject.putNonNull(...)`, `JsonObject.putIfAbsent(...)`, `JsonObject.replace(key, value)`, and matching builder helpers.
+
 ### Added
+- `Nodes.Access.present` so read access can distinguish a present `null` value from a missing location across simple, Jackson 2, Jackson 3, and Gson-backed nodes.
+- `Nodes.computeIfAbsentInObject(...)` for Map, `JsonObject`, POJO/JOJO, and facade-backed object nodes.
+
+### Changed
+- `JsonPath` now tracks single-get, single-put, and single-eval paths separately, enabling direct fast paths for single-target `find(...)`, typed `find(...)`, `eval(...)`, and `compute(...)` calls.
+- `JsonPath` now uses read-specific access metadata for traversal, preserving present-`null` matches without a separate contains lookup on each segment.
+- Path function literal arguments are resolved when the path segment is created instead of on every evaluation.
+- `JsonPath.ensurePutIfAbsent(...)` now treats `null` as absent, returns the existing non-null value when no write occurs, fills null array slots, and appends when an indexed target equals the current array size.
+- Typed `JsonPath.getMap(...)`, `getList(...)`, `getArray(...)`, and `getSet(...)` now use strict conversion instead of lenient conversion.
+- Updated `sjf4j-bytecode` and `sjf4j-schema` publishing metadata descriptions for their split module roles.
+
+### Fixed
+- Preserved present-`null` JSONPath matches while still omitting truly missing locations from `find(...)` results.
+- Fixed JSONPath root `contains(...)` handling and parent-missing checks for put/add/replace/remove-style writes.
 
 
 ## [1.3.0] - 2026.05.22

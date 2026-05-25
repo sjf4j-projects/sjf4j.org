@@ -4,15 +4,13 @@ description: "Navigate, query, and update Java object graphs with RFC 9535 JsonP
 ---
 
 # Navigating
-SJF4J supports two standardized path syntaxes:
+SJF4J provides a unified, JSON-semantic path engine that works on all OBNT nodes.  
+It supports two standardized path syntaxes:
 - [JSON Path (RFC 9535)](https://www.rfc-editor.org/rfc/rfc9535)
 - [JSON Pointer (RFC 6901)](https://www.rfc-editor.org/rfc/rfc6901)
 
+
 ## Path Based Navigation
-SJF4J provides a unified, JSON-semantic path engine that works on all OBNT nodes.  
-
-
-### Use `JsonPath`
 `JsonPath` represents a parsed, reusable path expression.  
 `JsonPath.parse(...)` accepts both JSON Path expressions such as `$.user.role`
 and JSON Pointer expressions such as `/user/role`; the syntax is detected automatically.
@@ -32,18 +30,21 @@ List<Integer> scores1 = path.find(node, Integer.class);
 List<Integer> scores2 = path.find(jo, Integer.class);
 ```
 
-### Use `JsonObject`
+### `JsonPath` Method List
 
-`JsonObject`/`JsonArray`/`JOJO`/`JAJO` provide convenient shortcut methods for using `JsonPath`.  
-These methods follow the naming pattern `*ByPath()`.
+`JsonPath` is the reusable path object behind both JSON Path and JSON Pointer navigation.
+It provides read, query, mutation, and path-inspection APIs over any OBNT node.
 
-For example:
-```java
-JsonPath.parse("$.user.role").getString(jo);
-
-// Equivalent to:
-jo.getStringByPath("$.user.role");
-```
+| Category | Methods |
+|----------|---------|
+| Parse and inspect | `parse()`, `toExpr()`, `toPointerExpr()`, `length()`, `segments()`, `copy()`, `rooted()`, `head()`, `tail()`, `isSinglePut()`, `hasAppend()` |
+| Existence checks | `contains()`, `hasNonNull()` |
+| Single-node access | `getNode()`, `getString()`, `getNumber()`, `getLong()`, `getInt()`, `getShort()`, `getByte()`, `getDouble()`, `getFloat()`, `getBigInteger()`, `getBigDecimal()`, `getBoolean()` |
+| Container/model access | `getJsonObject()`, `getMap()`, `getJsonArray()`, `getList()`, `getArray()`, `getSet()`, `get()` |
+| Cross-type access | `getAsString()`, `getAsNumber()`, `getAsLong()`, `getAsInt()`, `getAsShort()`, `getAsByte()`, `getAsDouble()`, `getAsFloat()`, `getAsBigInteger()`, `getAsBigDecimal()`, `getAsBoolean()`, `getAs()` |
+| Multi-match query | `find()`, `findAs()` |
+| Adaptive evaluation | `eval()`, `evalAs()` |
+| Mutation | `add()`, `replace()`, `removeIfPresent()`, `put()`, `putIfParentPresent()`, `ensurePut()`, `ensurePutIfAbsent()`, `compute()` |
 
 ### Query API
 
@@ -100,6 +101,24 @@ int tags = jo.evalByPath("$.tags[*].count()", Integer.class);
 
 ### Mutation APIs
 
+SJF4J has two families of path mutation APIs:
+
+- `add()`, `replace()`, and `removeIfPresent()` follow JSON Patch-style mutation semantics.
+- `put()`, `ensurePut()`, and `compute()` are SJF4J convenience APIs for direct object graph updates.
+
+| API                               | Parent path                     | Object target                                                    | Array index target                                                        | Append target                    | Main use                                                |
+|-----------------------------------|---------------------------------|------------------------------------------------------------------|---------------------------------------------------------------------------|----------------------------------|---------------------------------------------------------|
+| `add(node, value)`                | Must exist                      | Insert or overwrite member                                       | Insert at index `0..size`                                                 | Append                           | JSON Patch `add` semantics                              |
+| `replace(node, value)`            | Must exist                      | Target member must exist                                         | Existing index only                                                       | Not supported                    | JSON Patch `replace` semantics                          |
+| `removeIfPresent(node)`           | Missing parent returns no value | Remove member; POJO fields cannot be removed                     | Remove from mutable arrays/lists only                                     | Not supported                    | JSON Patch-style removal                                |
+| `put(node, value)`                | Must exist                      | Upsert member                                                    | Replace existing index, or append when `index == size`                    | Append                           | General write/upsert                                    |
+| `putIfParentPresent(node, value)` | Missing parent is a no-op       | Same as `put()` if parent exists                                 | Same as `put()` if parent exists                                          | Same as `put()` if parent exists | Optional write when parent already exists               |
+| `ensurePut(node, value)`          | Created when possible           | Upsert member                                                    | Replace existing index, or append when creating/appending                 | Append                           | Create missing containers, then write                   |
+| `ensurePutIfAbsent(node, value)`  | Created when missing            | Write only when key is missing; present `null` counts as present | Existing index is left unchanged; missing index errors on existing arrays | Append                           | Create missing path without overwriting existing values |
+| `compute(node, fn)`               | Matches existing parents only   | Recompute and write each matched member                          | Recompute and write each matched index                                    | Append computed value            | Bulk update matched locations                           |
+
+> **Important**: `add()` is intentionally JSON Patch-style. For an object path such as `$.user.name` or `/user/name`, it writes that object member. To append to an array, target the array append position, for example `$.scores[+]` or `/scores/-`.
+
 **`add(path, value)`**  
 - Object member:
   - Missing → inserted
@@ -113,7 +132,7 @@ int tags = jo.evalByPath("$.tags[*].count()", Integer.class);
 - Target must exist
 - Otherwise → ERROR
 
-**`remove(path)`**
+**`removeIfPresent(path)`**
 - Cannot remove fields in `POJO`
 - Cannot remove elements in native `Array` or `Set`
 
@@ -128,7 +147,7 @@ JsonObject jo = JsonObject.fromJson("""
 
 JsonPath.parse("$.scores[+]").add(jo, 100);       // append
 JsonPath.parse("/name").replace(jo, "Alice");     // target must exist
-JsonPath.parse("$.active").remove(jo);            // remove target
+JsonPath.parse("$.active").removeIfPresent(jo);   // remove target if present
 ```
 
 Result:
@@ -139,7 +158,7 @@ Result:
 }
 ```
 
-> **Note**: `add()`, `replace()`, and `remove()` follow JSON Patch mutation semantics.
+> **Note**: `add()`, `replace()`, and `removeIfPresent()` follow JSON Patch mutation semantics.
 
 **`put(path, value)`**
 - Object member:
@@ -185,6 +204,18 @@ JsonPath.parse("$..version").compute(jo, (parent, current) ->
         current != null 
         ? current 
         : Nodes.getInObject(parent, "ver"));
+```
+
+### Use Shortcuts
+
+`JsonObject`/`JsonArray`/`JOJO`/`JAJO` provide convenient shortcut methods for using `JsonPath`.  
+These methods follow the naming pattern `*ByPath()`.
+
+For example:
+```java
+JsonPath.parse("$.name").getString(JsonObject.fromJson("{\"name\": \"Alice\"}"));
+// Equivalent to:
+JsonObject.fromJson("{\"name\": \"Alice\"}").getStringByPath("$.name");
 ```
 
 
@@ -283,7 +314,7 @@ String result = jo.evalByPath("$.hi()", String.class);
 but only accepts RFC 6901 pointer expressions.
 
 ```java
-JsonPointer.parse("/scores/2").remove(jo);
+JsonPointer.parse("/scores/2").removeIfPresent(jo);
 
 String s = jo.getStringByPath("/scores/3");
 ```
@@ -300,6 +331,15 @@ If you already know JDK 8 `Stream`, the mental model is almost the same:
 - each path-based stage works on the result of the previous stage
 
 In other words, you can think of `NodeStream` as **"JSON/OBNT navigation + Java Stream processing"**.
+
+### `NodeStream` Method List
+
+| Category | Methods |
+|----------|---------|
+| Create | `of()` |
+| Path stages | `getByPath()`, `asByPath()`, `findByPath()`, `findAsByPath()`, `evalByPath()`, `evalAsByPath()` |
+| Stream stages | `filter()`, `map()`, `flatMap()`, `distinct()`, `peek()`, `limit()`, `skip()`, `sorted()` |
+| Terminal operations | `count()`, `anyMatch()`, `allMatch()`, `noneMatch()`, `findFirst()`, `findAny()`, `toList()`, `toJsonArray()`, `collect()` |
 
 ```java
 List<String> tags = NodeStream.of(node)
@@ -331,7 +371,7 @@ Then `getByPath("$.x", ...)` reads `x` from each matched profile object, just li
 
 ```java
 double avgScore = jo.stream()
-        .find("$.scores[*]", Double.class)
+        .findByPath("$.scores[*]", Double.class)
         .map(d -> d < 60 ? 60 : d)                      // Same idea as Stream.map(...)
         .collect(Collectors.averagingDouble(s -> s));
 ```

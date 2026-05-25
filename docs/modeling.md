@@ -131,6 +131,24 @@ Basic operations are available through:
 - Instance methods (`JsonObject`, `JsonArray`)
 - The static `Nodes` facade (for raw nodes)
 
+### `Nodes` Method List
+
+`Nodes` exposes JSON-semantic operations as static methods, so the same API works for raw `Map/List`,
+`JsonObject/JsonArray`, POJO/JOJO/JAJO, arrays, sets, and scalar values.
+
+| Category | Methods |
+|----------|---------|
+| Type-safe access | `toString()`, `toChar()`, `toNumber()`, `toLong()`, `toInt()`, `toShort()`, `toByte()`, `toDouble()`, `toFloat()`, `toBigInteger()`, `toBigDecimal()`, `toBoolean()`, `toEnum()` |
+| Cross-type conversion | `asString()`, `asChar()`, `asNumber()`, `asLong()`, `asInt()`, `asShort()`, `asByte()`, `asDouble()`, `asFloat()`, `asBigInteger()`, `asBigDecimal()`, `asBoolean()`, `asEnum()` |
+| Container/model conversion | `toJsonObject()`, `toMap()`, `toJsonArray()`, `toList()`, `toArray()`, `toSet()`, `toJojo()`, `toJajo()`, `toPojo()`, `to()`, `as()` |
+| Object nodes | `sizeInObject()`, `keySetInObject()`, `entrySetInObject()`, `containsInObject()`, `getInObject()`, `putInObject()`, `removeInObject()`, `computeIfAbsentInObject()` |
+| Object iteration/update | `forEachObject()`, `anyMatchInObject()`, `replaceAllInObject()`, `removeIfInObject()` |
+| Array nodes | `sizeInArray()`, `iteratorInArray()`, `containsInArray()`, `getInArray()`, `putInArray()`, `setInArray()`, `addInArray()`, `removeInArray()` |
+| Array iteration | `forEachArray()`, `anyMatchInArray()` |
+| Inspection and identity | `equals()`, `hash()`, `copy()`, `inspect()`, `shape()` |
+| Traversal | `walk()`, `WalkTarget`, `WalkOrder` |
+| Advanced access helpers | `Access`, `getAccessInObject()`, `putAccessInObject()`, `getAccessInArray()`, `putAccessInArray()` |
+
 ### Access and Conversion
 Nodes support both strict access and semantic conversion.
 
@@ -143,8 +161,8 @@ Nodes support both strict access and semantic conversion.
 Object node = "123";
 
 Nodes.toString(node);           // -> "123"
-Nodes.toInteger(node);          // -> ERROR (strict access)
-Nodes.asInteger(node);          // -> 123   (semantic conversion)
+Nodes.toInt(node);              // -> ERROR (strict access)
+Nodes.asInt(node);              // -> 123   (semantic conversion)
 ```
 
 ### Structural Operations
@@ -184,9 +202,9 @@ Nodes.copy(node);                         // shallow copy
 Sjf4j.global().deepNode(node);          // deep copy
 ```
 
-### Dynamic Objects with `JsonObject`
+### Instance methods
 `Nodes` provides static APIs for all OBNT nodes.  
-`JsonObject` offers a dynamic, instance-based representation for JSON objects.
+`JsonObject`/`JsonArray` offers a dynamic, instance-based representation for JSON objects.
 
 ```java
 String json = """

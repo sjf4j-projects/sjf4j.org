@@ -6,7 +6,70 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Breaking Changes
+- Renamed the optional compiled-path accelerator artifact from `sjf4j-bytecode` to `sjf4j-asm`; generated runtime APIs now live under `org.sjf4j.compiled`, while the ASM provider remains under `org.sjf4j.asm`.
+- Renamed path/node write helpers to make parent-missing and replace-all semantics explicit, including `putIfPresent` -> `putIfParentPresentByPath`, `remove` -> `removeIfPresent`, `replace` -> `replaceAll`, and `access*` -> read-specific `getAccess*` / write-specific `putAccess*` variants across `Nodes`, `FacadeNodes`, and native facades.
+- Removed map-style `JsonObject` mutation shortcuts such as `putNonNull(...)`, `putIfAbsent(...)`, `replace(key, value)`, and matching builder helpers.
+- Kept generated schema-validator annotations incubator-only; `@CompiledSchemaValidator` and `@ValidatorOptions` are no longer published from the main source set.
+
 ### Added
+- Added the `sjf4j-processor` annotation processor module for generated path and mapper implementations, loaded through `org.sjf4j.compiled.CompiledNodes.of(...)`.
+- Added `@CompiledPath` generation for typed path reads, multi-target finds, strict writes, parent-present writes, ensure writes, and ensure-if-absent writes without runtime path evaluation.
+- Added `@CompiledMapper` generation for bean, field, record, constructor, and in-place update mappings, including JSONPath/JSON Pointer sources, computed values, multi-source mapping, target paths, nested mapper conversion, and collection/map update policies.
+- Added `Nodes.Access.present` so read paths can distinguish present `null` values from missing locations across simple and facade-backed nodes.
+- Added `Nodes.computeIfAbsentInObject(...)` for Map, `JsonObject`, POJO/JOJO, and facade-backed object nodes.
+
+### Changed
+- Improved `JsonPath` single-target read/write/eval fast paths and traversal metadata so present-`null` matches are preserved without extra per-segment contains checks.
+- Improved generated path and mapper code to reuse common source reads/path prefixes, reduce casts and boxing, emit direct container creation, and fail unsupported intermediate path types during annotation processing.
+- `@CompiledMapper` auto-mapping now honors SJF4J `@NodeProperty`, Jackson 2/3 `@JsonProperty`, and Fastjson2 `@JSONField` names without adding runtime dependencies.
+- `NullValuePolicy.IGNORE` now skips missing/null source path leaves while still allowing targets and nested target containers to be created when non-null data is available.
+- `JsonPath.ensurePutIfAbsent(...)` now treats `null` as absent, returns the existing non-null value when no write occurs, fills null array slots, and appends at `idx == size`.
+- Typed `JsonPath.getMap(...)`, `getList(...)`, `getArray(...)`, and `getSet(...)` now use strict conversion instead of lenient conversion.
+
+### Fixed
+- Fixed present-`null` JSONPath results, root `contains(...)`, and parent-missing checks for write operations.
+- Fixed generic binding for `Nodes.to(..., TypeReference)` and `Sjf4j.fromNode(..., TypeReference)` when source values already match the target raw type.
+- Fixed generated mapper compilation and conversion edge cases for primitive targets, mixed structural sources, JOJO dynamic entries, and nested collection/map mapper conversions.
+
+
+## [1.3.0] - 2026.05.22
+### Major Upgrade
+- Modularization & Package Split:
+  - Added `sjf4j-bytecode` module: ASM-backed `PathCompiler`, JMH benchmarks, dedicated bytecode tests.
+  - Added `sjf4j-schema` module: standalone JSON Schema validation, all `org.sjf4j.schema.*` classes, test suites, and fixtures moved here.
+  - Core `sjf4j` no longer contains schema validation code; consumers needing JSON Schema support must add `sjf4j-schema` as a dependency.
+
+### Breaking Changes
+- Removed `AccessStrategy` and `@NodeBinding(access=...)` in favor of `@NodeBinding(propertyStrategy=PropertyStrategy...)` for property-family discovery.
+- `@NodeProperty.valueFormat` renamed to `@NodeProperty.codecName`
+- New public APIs: `org.sjf4j.asm.BytecodePath` and `PathCompiler` SPI; old `org.sjf4j.path.CompiledPath` no longer active.
+- Indexed array replacement semantics tightened: `Nodes.setInArray(...)` no longer append when `idx == size`; use `Nodes.putInArray(...)` or explicit append-path for replace-or-append.
+- Removed `ValidationOptions`; `SchemaPlan` and `SchemaValidator` now use explicit boolean parameters for fail-fast and strict-format.
+- `SchemaException` moved from `org.sjf4j.exception` to `org.sjf4j.schema`
+
+### Added
+- `PropertyStrategy` with modes: `BEAN_ONLY`, `FIELD_ONLY`, `BEAN_FIELD`, `FIELD_BEAN`; `BEAN_FIELD` is default.
+- `@NodeIgnore` supports class, field, getter, setter exclusions.
+- `PatternedValueCodec<V,R>` interface and `ValueCodec` for `LocalTime` and `Optional`.
+- `@NodeProperty.codecPattern` for DateTimeFormatter patterns, supported by `LocalDate`, `LocalDateTime`, `OffsetDateTime`, `ZonedDateTime`.
+- `Nodes.putInArray(node, idx, value)` for explicit replace-or-append.
+- Compiled-path APIs in `org.sjf4j.asm` with ASM accelerator.
+
+### Changed
+- POJO/JOJO binding discovers merged property families across fields, bean accessors, and record components; `BEAN_FIELD` is default.
+- `@NodeProperty` supports method-level renames, aliases, value-format metadata.
+- Streaming and node-conversion paths unified across Jackson 2/3, Fastjson2, Gson, and simple facade.
+- `SchemaPlan.validate(...)` and `SchemaValidator` use explicit failFast / strictFormat booleans.
+
+### Removed
+-Old field-oriented `AccessStrategy` and POJO metadata naming.
+
+### Fixed
+- `JsonPath.ensurePut(...)` handles null intermediate array slots correctly.
+- `Patches.indexedMerge(...)` preserves tail-growth behavior after strict indexed array replacement.
+- Property binding consistency for renamed bean properties, `@OneOf`/value-format propagation, and creator-bound property conflicts.
+- Draft 2020-12 schema compatibility fixes: `format-assertion`, hostname/IDN, URI/IRI, email, UUID, regex.
 
 
 ## [1.2.3] - 2026.05.11

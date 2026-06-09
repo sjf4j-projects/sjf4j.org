@@ -45,12 +45,12 @@ All documentation lives in Markdown files:
 | `index.md`                | Homepage                 |
 | `docs/getting_started.md` | Docs landing page        |
 | `docs/modeling.md`        | Modeling (OBNT)          |
-| `docs/parsing.md`         | Parsing (Codec)          |
+| `docs/binding.md`         | Binding (Multi-Format)   |
 | `docs/navigating.md`      | Navigating (JSON Path)   |
 | `docs/patching.md`        | Patching (JSON Patch)    |
 | `docs/validating.md`      | Validating (JSON Schema) |
 | `docs/mapping.md`         | Mapping (Transformation) |
-| `docs/accelerating.md`    | Accelerating (Bytecode)  |
+| `docs/accelerating.md`    | Accelerating (Compiled Access) |
 | `docs/benchmarks.md`      | Benchmark results        |
 | `docs/faq.md`             | FAQ                      |
 
@@ -95,12 +95,12 @@ sidebar: [
       { text: 'Getting Started', link: '/docs/getting_started' },
       { text: 'Benchmarks', link: '/docs/benchmarks' },
       { text: 'Modeling (OBNT)', link: '/docs/modeling' },
-      { text: 'Parsing (Codec)', link: '/docs/parsing' },
+      { text: 'Binding (Multi-Format)', link: '/docs/binding' },
       { text: 'Navigating (JSON Path)', link: '/docs/navigating' },
       { text: 'Patching (JSON Patch)', link: '/docs/patching' },
       { text: 'Validating (JSON Schema)', link: '/docs/validating' },
       { text: 'Mapping (Transformation)', link: '/docs/mapping' },
-      { text: 'TODO (Performance)', link: '/docs/accelerating' },
+      { text: 'Accelerating (Compiled Access)', link: '/docs/accelerating' },
       // ...existing items...
       { text: 'New Feature', link: '/docs/new-feature' },   // ← add here
     ],

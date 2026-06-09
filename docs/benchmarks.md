@@ -34,11 +34,10 @@ ReflectionBenchmark.reflection_setter_lambda         avgt   24   0.996 ± 0.007 
   enabling dynamic object manipulation with **near-native performance**.
 
 
-## JSON Parsing Benchmark
-This benchmark measures the additional structural overhead introduced by SJF4J on top of native JSON libraries.
-
-SJF4J performs encoding and decoding on top of the underlying JSON parsers.  
-It adds structural capabilities to the OBNT model, such as `JOJO`, `@NodeValue`, and `@OneOf`,
+## JSON Binding Benchmark
+This benchmark measures the additional structural overhead introduced by SJF4J on top of native JSON parsers.
+  
+SJF4J adds structural capabilities to the OBNT model, such as `JOJO`, `@NodeValue`, and `@OneOf`,
 while attempting to minimize additional overhead.
 
 To bridge different JSON libraries, SJF4J provides three streaming integration modes:
@@ -113,8 +112,10 @@ Read.json_simple_facade_pojo              SHARED_IO  avgt   20   7.635 ± 0.071 
 
 
 ## JSON Path Benchmark
-This benchmark compares `SJF4J` with `Jayway JsonPath` using JMH.  
+This benchmark compares SJF4J with Jayway JsonPath using JMH.  
 To keep the comparison fair, the main results focus on `compile` and `query` over the same in-memory model, rather than `parse + query` with different parser stacks.
+
+In the benchmark names, `_jsonnode_` means the Jackson `JsonNode` model, while `_maplist_` means the JDK `Map` + `List` model.
 
 Source: [JsonPathCompareBenchmark.java](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j/src/jmh/java/org/sjf4j/JsonPathCompareBenchmark.java)
 ```text
@@ -205,6 +206,59 @@ For native Java object graphs, `Map/List` is still fastest. `JOJO` stays close t
 - SJF4J shows strong performance in `compile` and `query` workloads, and provides comprehensive `mutation` operations.
 - Within SJF4J, `Map/List` gives the best raw speed, while `JOJO` stays much closer to `Map/List` than plain `POJO` does.
 
+### @CompiledPath with APT
+
+`@CompiledPath` brings JSONPath execution from runtime to compile time.  
+
+Instead of parsing and interpreting path expressions on every invocation, SJF4J generates dedicated Java accessors for `@CompiledPath`.
+
+Source: [CompiledPathBenchmark.java](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j-jdk17-test/src/jmh/java/org/sjf4j/jdk17/CompiledPathBenchmark.java)
+
+```text
+Benchmark                                          Mode  Cnt    Score   Error  Units
+get_bookPrice_jsonpath                             avgt    5   92.485 ± 3.447  ns/op
+get_bookPrice_compiledpath                         avgt    5    1.793 ± 0.034  ns/op
+get_bookPrice_native                               avgt    5    1.627 ± 0.012  ns/op
+
+get_color_jsonpath                                 avgt    5   91.491 ± 0.658  ns/op
+get_color_compiledpath                             avgt    5    0.988 ± 0.006  ns/op
+get_color_native                                   avgt    5    0.877 ± 0.032  ns/op
+
+get_price_jsonpath                                 avgt    5   80.996 ± 5.067  ns/op
+get_price_compiledpath                             avgt    5    0.984 ± 0.004  ns/op
+get_price_native                                   avgt    5    0.949 ± 0.081  ns/op
+
+put_bookPrice_jsonpath                             avgt    5   99.874 ± 1.089  ns/op
+put_bookPrice_compiledpath                         avgt    5   18.911 ± 0.884  ns/op
+put_bookPrice_native                               avgt    5   18.697 ± 1.175  ns/op
+
+put_price_jsonpath                                 avgt    5   86.607 ± 0.693  ns/op
+put_price_compiledpath                             avgt    5   19.587 ± 1.648  ns/op
+put_price_native                                   avgt    5   19.157 ± 0.609  ns/op
+
+ensurePut_missing_price_jsonpath                   avgt    5  180.904 ± 0.606  ns/op
+ensurePut_missing_price_compiledpath               avgt    5   17.557 ± 1.359  ns/op
+ensurePut_missing_price_native                     avgt    5   17.603 ± 2.551  ns/op
+```
+
+| Operation                 |      `JsonPath` | `CompiledPath` |          Result |
+|---------------------------|----------------:|---------------:|----------------:|
+| `get_bookPrice`           |  `92.485 ns/op` |  `1.793 ns/op` | `51.58x` faster |
+| `get_color`               |  `91.491 ns/op` |  `0.988 ns/op` | `92.60x` faster |
+| `get_price`               |  `80.996 ns/op` |  `0.984 ns/op` | `82.31x` faster |
+| `put_bookPrice`           |  `99.874 ns/op` | `18.911 ns/op` |  `5.28x` faster |
+| `put_price`               |  `86.607 ns/op` | `19.587 ns/op` |  `4.42x` faster |
+| `ensurePut_missing_price` | `180.904 ns/op` | `17.557 ns/op` | `10.30x` faster |
+
+**Summary**:
+
+Although `JsonPath` is already one of the fastest JSONPath implementations available, 
+`@CompiledPath` goes one step further (speedups range from 4× to over 90×).
+
+Instead of optimizing JSONPath execution, `@CompiledPath` eliminates it.
+
+
+
 ## JSON Schema Validation Benchmark
 
 ### Creek Service
@@ -261,5 +315,35 @@ Sample result:
 
 **Summary**:  
 - **Creek Service**: SJF4J stands out both for fast pure validation and for efficient serde-style validation over Java object graphs.
-- **Bowtie**: SJF4J delivers **high performance** 
-  and consistently ranks among the top-tier of Java implementations.
+- **Bowtie**: SJF4J ranks among the top-tier of Java implementations.
+
+
+## Object-to-object Mapping Benchmark
+
+This benchmark compares SJF4J generated mappers with MapStruct and direct hand-written mapping for the currently supported basic mapper subset.
+
+Source: [CompiledMapperBenchmark.java](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j-jdk17-test/src/jmh/java/org/sjf4j/jdk17/CompiledMapperBenchmark.java)
+
+```text
+Benchmark                                      Mode  Cnt    Score     Error  Units
+CompiledMapperBenchmark.flat_hand             avgt    5   10.724 ±   1.698  ns/op
+CompiledMapperBenchmark.flat_mapstruct        avgt    5   10.754 ±   0.555  ns/op
+CompiledMapperBenchmark.flat_sjf4j            avgt    5   11.296 ±   0.794  ns/op
+
+CompiledMapperBenchmark.list_flat_hand        avgt    5  486.478 ±  15.869  ns/op
+CompiledMapperBenchmark.list_flat_mapstruct   avgt    5  502.587 ± 140.311  ns/op
+CompiledMapperBenchmark.list_flat_sjf4j       avgt    5  479.231 ±   8.346  ns/op
+
+CompiledMapperBenchmark.multi_hand            avgt    5    2.970 ±   0.069  ns/op
+CompiledMapperBenchmark.multi_mapstruct       avgt    5    3.146 ±   0.042  ns/op
+CompiledMapperBenchmark.multi_sjf4j           avgt    5    3.145 ±   0.054  ns/op
+
+CompiledMapperBenchmark.update_hand           avgt    5   12.366 ±   0.550  ns/op
+CompiledMapperBenchmark.update_mapstruct      avgt    5   11.046 ±   0.224  ns/op
+CompiledMapperBenchmark.update_sjf4j          avgt    5   11.275 ±   0.436  ns/op
+```
+
+**Summary**:
+
+- `@CompiledMapper` performs at about the same speed as MapStruct and hand-written mapping in these benchmarks.
+- [Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark): SJF4J performs competitively with the fastest Java object mappers.

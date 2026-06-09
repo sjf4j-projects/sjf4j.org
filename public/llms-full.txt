@@ -38,7 +38,7 @@ Core concepts:
 Authoritative pages:
 - Getting started: https://sjf4j.org/docs/getting_started
 - Modeling (OBNT): https://sjf4j.org/docs/modeling
-- Parsing (Codec): https://sjf4j.org/docs/parsing
+- Binding (Multi-Format): https://sjf4j.org/docs/binding
 - Navigating (JSON Path): https://sjf4j.org/docs/navigating
 - Patching (JSON Patch / Merge Patch): https://sjf4j.org/docs/patching
 - Validating (JSON Schema): https://sjf4j.org/docs/validating

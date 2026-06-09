@@ -1,9 +1,9 @@
 ---
-title: "Parsing JSON, YAML, and Properties in Java"
-description: "Parse, serialize, and convert JSON, YAML, Java Properties, POJO, JOJO, and OBNT node structures through SJF4J's unified codec APIs."
+title: "Binding JSON, YAML, and Properties in Java"
+description: "Bind, parse, serialize, and convert JSON, YAML, Java Properties, POJO, JOJO, and OBNT node structures through SJF4J's unified codec APIs."
 ---
 
-# Parsing
+# Binding
 
 `Sjf4j` provides a unified set of entry-point APIs,
 allowing data to move consistently between:
@@ -13,30 +13,32 @@ allowing data to move consistently between:
 - Typed nodes (POJO, JOJO, JAJO)
 - OBNT representations
 
-## Conversion APIs
+In this page, **binding** means moving data between external formats, raw nodes, typed Java objects, and OBNT nodes. Parsing is only one direction of that flow.
 
-This section focuses on the core `from...` / `to...` APIs for parsing, serialization, and cross-format conversion.
+## Binding and Conversion APIs
+
+This section focuses on the core `from...` / `to...` APIs for binding, serialization, and cross-format conversion.
 
 ### `fromJson()` / `toJson()`
-From JSON
+Bind from JSON:
 ```java
 Sjf4j sjf4j = new Sjf4j();
-// Create a reusable Sjf4j instance for data parsing operations
+// Create a reusable Sjf4j instance for data binding operations
 
 Object node = sjf4j.fromJson(json);
-// Default: parsed into raw nodes (Map/List/String/Number/Boolean/null)
+// Default: bound into raw nodes (Map/List/String/Number/Boolean/null)
 
 JsonObject jo = sjf4j.fromJson(json, JsonObject.class);
-// Parsed as JsonObject, equivalent to `JsonObject.fromJson(json)`
+// Bound as JsonObject, equivalent to `JsonObject.fromJson(json)`
 
 User user = sjf4j.fromJson(json, User.class);
-// Parsed into POJO or JOJO
+// Bound into POJO or JOJO
 
 Map<String, Object> map =
         sjf4j.fromJson(json, new TypeReference<Map<String, Object>>() {});
 // Supports deep generics via TypeReference
 ```
-To JSON
+Serialize to JSON:
 ```java
 String json = sjf4j.toJsonString(node);
 
@@ -47,7 +49,7 @@ sjf4j.toJson(output, node);
 
 
 ### `fromYaml()` / `toYaml()`
-Semantically identical to JSON conversion.
+Uses the same target-type binding rules as JSON conversion.
 ```java
 Object node = sjf4j.fromYaml(yaml);
 
@@ -55,7 +57,7 @@ String yaml2 = sjf4j.toYamlString(node);
 ```
 
 ### `fromProperties()` / `toProperties()`
-Converts between hierarchical data and flat property structures.
+Converts between hierarchical object data and flat Java `Properties` structures.
 ```java
 Object node = sjf4j.fromProperties(properties);
 
@@ -104,7 +106,7 @@ Sjf4j sjf4j = Sjf4j.builder()
 To derive a new runtime from an existing one, use `Sjf4j.builder(existingSjf4j)`.
 It copies the current provider, streaming, value-format, and null-handling settings before you override them.
 
-## Node Conversion and Copying
+## In-Memory Binding and Copying
 
 ### `fromNode()` / `bindNode()` / `deepNode()`
 - `fromNode()` converts one OBNT representation into another, with isolated nested results.
@@ -121,7 +123,7 @@ User user3 = sjf4j.deepNode(user);
 // Produces a fully detached copy
 ```
 
-## Custom Node Binding
+## Custom Object Binding
 
 For POJO / JOJO binding, SJF4J can customize property names, creator selection, naming strategy, 
 property discovery strategy, ignore rules, and JOJO dynamic-property behavior.
@@ -359,12 +361,12 @@ If you ignore only one accessor, the property may still remain writable or reada
 Ignore all participating sources when the property should disappear completely.
 
 
-## Custom Node Type
-SJF4J allows custom Java types to participate in OBNT.
+## Custom Node Types
+SJF4J allows custom Java types to participate directly in OBNT.
 
-- For JSON Object → use `POJO` / `JOJO`
-- For JSON Array → use `JAJO`
-- For JSON Value → use `NodeValue`
+- For JSON objects → use `POJO` / `JOJO`
+- For JSON arrays → use `JAJO`
+- For JSON scalar values → use `NodeValue`
 
 ### Using `@NodeValue`
 **Annotate with `@NodeValue`**
@@ -397,7 +399,7 @@ public static class BigDay {
 The type can then be used directly without explicit registration:
 ```java
 BigDay day = Sjf4j.global().fromJson("\"2026-01-01\"", BigDay.class);
-assertEquals("\"2026-01-01\"", Sjf4j.global().toJson(day));
+assertEquals("\"2026-01-01\"", Sjf4j.global().toJsonString(day));
 ```
 
 `@NodeValue` types also participate in named codec selection, 

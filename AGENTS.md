@@ -17,7 +17,7 @@ Keep docs aligned with the main `../sjf4j` project, but prefer small, targeted e
 
 ## Priority Areas
 
-- `docs/parsing.md`
+- `docs/binding.md`
 - `docs/navigating.md`
 - `docs/patching.md`
 - `docs/validating.md`

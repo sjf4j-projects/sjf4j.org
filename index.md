@@ -10,10 +10,10 @@ hero:
       text: Getting Started
       link: /docs/getting_started
     - theme: alt
-      text: "⚖️ Benchmarks"
+      text: "⚡ Benchmarks"
       link: /docs/benchmarks
     - theme: alt
-      text: "🚧 Generate Java from JSON Schema"
+      text: "Generate Java from JSON Schema 🚧"
       link: /generator
 ---
 
@@ -33,9 +33,9 @@ SJF4J requires `JDK 8+` and has no external dependencies (except for the chosen 
     <a href="/docs/modeling">Learn more</a>
   </div>
   <div class="feature-card">
-    <h3>📦 Parsing (JSON / YAML)</h3>
-    <p>Parses and serializes JSON, YAML, Java Properties, and native Java object graphs through one facade.</p>
-    <a href="/docs/parsing">Learn more</a>
+    <h3>📦 Binding (Multi-Format)</h3>
+    <p>Binds, parses, and serializes JSON, YAML, Java Properties, and native Java object graphs through one facade.</p>
+    <a href="/docs/binding">Learn more</a>
   </div>
   <div class="feature-card">
     <h3>🔭 Navigating (JSON Path)</h3>
@@ -56,11 +56,6 @@ SJF4J requires `JDK 8+` and has no external dependencies (except for the chosen 
     <h3>🔀 Mapping (Transformation)</h3>
     <p>Maps and transforms object graphs for reshaping, projection, and DTO conversion.</p>
     <a href="/docs/mapping">Learn more</a>
-  </div>
-  <div class="feature-card">
-    <h3>⚡ Accelerating (Bytecode)</h3>
-    <p>TODO: Optional bytecode acceleration layer for OBNT operations.</p>
-    <a href="/docs/accelerating">Learn more</a>
   </div>
 </div>
 

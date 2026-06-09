@@ -198,7 +198,7 @@ System.out.println(Nodes.inspect(node));
 
 **Copying** semantics are explicit.
 ```java
-Nodes.copy(node);                         // shallow copy
+Nodes.copy(node);                       // shallow copy
 Sjf4j.global().deepNode(node);          // deep copy
 ```
 

@@ -8,7 +8,7 @@
 ## Key Docs
 - https://sjf4j.org/docs/getting_started
 - https://sjf4j.org/docs/modeling
-- https://sjf4j.org/docs/parsing
+- https://sjf4j.org/docs/binding
 - https://sjf4j.org/docs/navigating
 - https://sjf4j.org/docs/patching
 - https://sjf4j.org/docs/validating

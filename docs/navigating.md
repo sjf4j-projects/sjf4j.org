@@ -10,7 +10,7 @@ It supports two standardized path syntaxes:
 - [JSON Pointer (RFC 6901)](https://www.rfc-editor.org/rfc/rfc6901)
 
 
-## Path Based Navigation
+## JsonPath
 `JsonPath` represents a parsed, reusable path expression.  
 `JsonPath.parse(...)` accepts both JSON Path expressions such as `$.user.role`
 and JSON Pointer expressions such as `/user/role`; the syntax is detected automatically.
@@ -219,7 +219,7 @@ JsonObject.fromJson("{\"name\": \"Alice\"}").getStringByPath("$.name");
 ```
 
 
-## JSON Path
+## JSON Path Syntax
 SJF4J fully supports the [JSON Path (RFC 9535)](https://www.rfc-editor.org/rfc/rfc9535) specification,
 including `filters`, `functions`, `descent`, `unions`, `slicing`, `function calls`, and so on.
 
@@ -299,7 +299,7 @@ FunctionRegistry.register(
 String result = jo.evalByPath("$.hi()", String.class);
 ```
 
-## JSON Pointer
+## JsonPointer
 
 [JSON Pointer (RFC 6901)](https://www.rfc-editor.org/rfc/rfc6901) syntax:
 
@@ -320,7 +320,7 @@ String s = jo.getStringByPath("/scores/3");
 ```
 
 
-## Processing with NodeStream
+## NodeStream
 
 `NodeStream` enables declarative, pipeline-style processing on OBNT.
 
@@ -332,7 +332,7 @@ If you already know JDK 8 `Stream`, the mental model is almost the same:
 
 In other words, you can think of `NodeStream` as **"JSON/OBNT navigation + Java Stream processing"**.
 
-### `NodeStream` Method List
+**`NodeStream` Method List**
 
 | Category | Methods |
 |----------|---------|
@@ -380,27 +380,291 @@ Use this style when path syntax is good for navigation, but Java code is clearer
 normalization, or aggregation.
 
 
-## Performance
+## @CompiledPath 
+Every runtime path evaluation involves parsing, tokenization, navigation, and interpretation. 
+For occasional queries, that overhead is negligible. 
+For hot paths executed millions of times, it becomes measurable.
 
-SJF4J JsonPath is designed for direct traversal over native Java object graphs with low structural overhead.
+`@CompiledPath` eliminates that overhead entirely.
 
-- SJF4J delivers fast performance in JMH benchmarks.
-- Inside SJF4J, `Map/List` is fastest, `JOJO` is close behind, and plain `POJO` is slower.
-- `JOJO` is the best fit when you want typed models with a more JSON-native performance profile.
+By adding `sjf4j-processor`, SJF4J validates JSONPath expressions at build time and generates direct Java accessors. 
+At runtime, path operations execute as ordinary Java code—without parsing, interpretation, or reflection.  
+In [APT-based Benchmarks](./benchmarks#apt-based-compiledpath) , 
+compiled accessors are often **several to dozens of times faster** than dynamic path evaluation.
 
-See [Benchmarks](./benchmarks#json-path-benchmark) for the latest results and methodology.
+
+### Add `sjf4j-processor`
+
+Gradle:
+
+```groovy
+dependencies {
+    implementation("org.sjf4j:sjf4j:{version}")
+    annotationProcessor("org.sjf4j:sjf4j-processor:{version}")
+}
+```
+
+<details>
+<summary>Maven</summary>
+
+```xml
+<dependency>
+    <groupId>org.sjf4j</groupId>
+    <artifactId>sjf4j</artifactId>
+    <version>{version}</version>
+</dependency>
+
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <configuration>
+                <annotationProcessorPaths>
+                    <path>
+                        <groupId>org.sjf4j</groupId>
+                        <artifactId>sjf4j-processor</artifactId>
+                        <version>{version}</version>
+                    </path>
+                </annotationProcessorPaths>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+```
+
+</details>
 
 
-## JsonPath in the OBNT Model
+### Method Rules
+A compiled path method is simply a Java method whose signature describes a JSONPath operation.
 
-SJF4J applies path navigation directly on plain Java objects (OBNT),
-instead of operating on a separate JSON AST.  
+```text
+┌─────────────────────────────────────────────┐
+│ ReturnType method(root, params..., value?)  │
+└─────────────────────────────────────────────┘
+                    │         │         │
+                    │         │         └─ Value to write
+                    │         │            (@PutByPath, @EnsurePutByPath)
+                    │         │
+                    │         └─ Path parameters
+                    │            ({idx}, {name}, ...)
+                    │
+                    └─ Root object
+```
+
+For example:
+```java
+@CompiledPath
+interface UserPath {
+    @GetByPath("$.profile.name")
+    String getName(User user);
+
+    @GetByPath("$.friends[{idx}].name")
+    String friendName(User user, int idx);
+
+    @PutByPath("$.settings.theme")
+    String theme(User user, String value);
+}
+```
+
+The generated implementation is obtained through:
+```java
+UserPath path = CompiledNodes.of(UserPath.class);
+
+// path.getName(user);
+// path.friendName(user, 3);
+// path.theme(user, "black");
+```
+
+**Common Rules:**
+- Unsupported paths fail at compile time.
+- The first parameter is always the `root` object.
+- For write operations, the last parameter is the `value` to write.
+- Path placeholders such as `{idx}` and `{name}` are bound to method parameters.
+  - `int` parameters address array or list indexes.
+  - `String` parameters address object keys.
+- Return type
+  - No automatic type conversion is performed (only standard Java boxing and unboxing).
+  - Type mismatches fail at compile time.
+  - Missing `reference-type` results return `null`.
+  - Missing `primitive` results fail because absence cannot be represented.
+  - Write methods may return `void` or a value type.
+    - `void` indicates that the previous value is ignored.
+    - A non-void return type returns the previous value at the target location.
+
+### Read Operations
+
+#### `@GetByPath`
+Reads a single value from the object graph.
+
+```java
+record User(long id, Profile profile, List<Order> orders, Map<String, Object> settings) {}
+record Profile(String name, Address address) {}
+record Address(String city) {}
+record Order(String id, List<Item> items) {}
+record Item(String sku, int quantity) {}
+
+@CompiledPath
+interface UserPath { 
+    @GetByPath("$.id") 
+    long id(User user);
+
+    @GetByPath("$.profile.address.city")
+    String city(User user);
+
+    @GetByPath("$.orders[{orderIndex}].items[{itemIndex}].sku")
+    String itemSku(User user, int orderIndex, int itemIndex);
+
+    @GetByPath("$.settings[{key}]")
+    Object setting(User user, String key);
+    
+    @GetByPath("$.orders[-1].id")
+    String lastOrderId(User user);
+}
+```
+
+For example, the generated implementation for `city(...)` is similar to:
+```java
+    // Generated by SJF4J
+    @Override
+    public String city(User root) {
+        if (root == null) return null;
+        Profile o_profile = root.profile();
+        if (o_profile == null) return null;
+        Address o_address = o_profile.address();
+        if (o_address == null) return null;
+        return o_address.city();
+    }
+```
+
+The generated implementation is ordinary Java code. No reflection, no method handles, and no runtime JSONPath parsing.
+
+**Get Rules:**
+- The path must resolve to at most one value.
+- Multi-target query paths (such as `*`, `..`) are rejected at compile time.
+- Negative array indexes are supported. For example, `[-1]` selects the last element.
+- Missing reference-type results return null.
+- Missing primitive results fail because absence cannot be represented.
+- Return types must match the target value type.
+
+
+#### `@FindByPath` 
+Reads multiple values from the object graph and returns them as `List<T>`.
+
+- The processor
+can generate direct code for supported path shapes such as root, wildcards,
+slices, and static name/index unions. Filters and recursive descent require
+explicit fallback:
+
+```java
+@CompiledPath
+interface ItemPaths {
+    @FindByPath("$.items[*].name")
+    List<String> itemNames(Container root);
+  
+    @FindByPath("$.metadata['version','missing','author','nullable']")
+    List<Object> metadataFields(Container root);
+  
+    @FindByPath("$.items[2,0].name")
+    List<String> itemNamesByIndexUnion(Container root);
+
+    @FindByPath("$.items[0:2].name")
+    List<String> firstTwoItemNames(Container root);
+  
+    @FindByPath(value = "$.items[?(@.age > 18)].name", allowFallback = true)
+    List<String> adultNames(Catalog catalog);
+}
+```
+
+Direct code generation is available for common multi-target path shapes, including:
+
+- Wildcards (`[*]`)
+- Slices (`[0:2]`)
+- Static name unions (`['a','b']`)
+- Static index unions (`[0,2]`)
+
+**Find Rules:**
+- Methods must return `List<T>`.
+- Filters (`[?()]`) and recursive descent (`..`) require `allowFallback = true`; otherwise compilation fails.
+- Result ordering follows normal JSONPath evaluation order.
+
+### Write Operations
+
+SJF4J provides four write annotations with different behaviors when parents are missing or values already exist.
+
+```java
+@PutByPath("$.settings.theme")
+Object theme(User user, String value);
+
+@PutIfParentPresentByPath("$.settings.locale")
+Object locale(User user, String value);
+
+@EnsurePutByPath("$.settings.ui.theme")
+Object ensureTheme(User user, String value);
+
+@EnsurePutIfAbsentByPath("$.settings.ui.locale")
+Object defaultLocale(User user, String value);
+```
+
+**Behavior Comparison**  
+
+The semantics are identical to the corresponding runtime `JsonPath` operations.
+
+| Annotation                  | Parent Missing | Value Exists  | Write Performed          |
+|-----------------------------|----------------|---------------|--------------------------|
+| `@PutByPath`                | Fail           | Replace       | Always                   |
+| `@PutIfParentPresentByPath` | Skip           | Replace       | Only if parent exists    |
+| `@EnsurePutByPath`          | Create         | Replace       | Always                   |
+| `@EnsurePutIfAbsentByPath`  | Create         | Keep Existing | Only if absent or `null` |
+
+
+For example, the generated implementation for `ensureTheme(...)` is similar to:
+```java
+    // Generated by SJF4J
+    @Override
+    public Object ensureTheme(User root, String value) {
+        Objects.requireNonNull(root, "root");
+        Map<String, Object> o_settings = root.settings();
+        if (o_settings == null) {
+            throw new JsonException("Cannot create missing ensure intermediate read-only property 'settings' on User");
+        }
+        Object o_ui = o_settings.get("ui");
+        if (o_ui == null) {
+          o_ui = new LinkedHashMap<>();
+          o_settings.put("ui", o_ui);
+        }
+        return Nodes.putInObject(o_ui, "vivo", value);
+    }
+```
+
+The generated implementation is ordinary Java code. No reflection, no method
+handles, and no runtime JSONPath parsing.
+
+**Put Rules**
+- The last method parameter is the value to write.
+- Methods may return `void` or the previous value at the target location.
+- Return types must match the previous value type.
+- The root object itself is never created.
+- `@Ensure*` annotations may create missing intermediate containers.
+- Read-only intermediate properties cannot be created and cause the operation to fail.
+- Intermediate containers must be creatable by generated code. Unsupported container types fail at compile time. 
+  - Unknown or `Map-typed` object containers are created as `LinkedHashMap`.
+  - Array-like containers are created as `ArrayList`.
+
+
+## JSON Path in the OBNT Model
+
+Unlike traditional JSONPath implementations that operate on a separate JSON AST,
+SJF4J applies path navigation directly to OBNT (Object-Based Node Tree) objects.
+
 This means:
 
 - The same path engine works across `Map`, `List`, `POJO`, and `JOJO`
 - No intermediate tree conversion is required
-- Mutations apply to the actual object graph
+- Mutations apply directly to the actual object graph
 - Path evaluation integrates naturally with Java Streams
 
-In SJF4J, `JsonPath` is part of the core structural model,
-not an external query layer.
+In SJF4J, `JsonPath` and `CompiledPath` are not utilities layered on top of the data model.
+
+They are first-class operations of the OBNT model itself.

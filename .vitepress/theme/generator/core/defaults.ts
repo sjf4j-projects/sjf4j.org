@@ -21,6 +21,7 @@ export function createDefaultGeneratorOptions(): GeneratorOptions {
     fieldStrategy: 'all',
     accessorMode: 'lombok',
     pathAccessorStrategy: 'required',
+    pathStrategy: 'compiledPath',
     useValidation: true,
     validationAnnotations: [...validationAnnotationOptions],
     validationNamespace: 'jakarta',

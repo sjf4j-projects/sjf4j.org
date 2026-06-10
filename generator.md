@@ -110,11 +110,25 @@ pageClass: generator-page
 
 - Path accessors are generated only on the root class.
 - Root direct members do not generate path accessors.
-- Path accessors without index parameters use pre-parsed `static final JsonPath` constants via `JsonPath.parse(...)` on the root class.
-- Path accessors with one or more index parameters continue to use `JsonObject` `*ByPath` APIs and `ensurePutByPath(path, value)` directly.
+- `pathStrategy` supports two modes:
+  - `compiledPath` (default)
+  - `jsonPath`
+- In `jsonPath` mode, path accessors preserve the legacy baseline:
+  - path accessors without index parameters use pre-parsed `static final JsonPath` constants via `JsonPath.parse(...)` on the root class
+  - path accessors with one or more index parameters use `JsonObject` `*ByPath` APIs and `ensurePutByPath(path, value)` directly
+- In `compiledPath` mode:
+  - root path accessors use a root-scoped `@CompiledPath` interface named after the root class, such as `OrderPath`, plus a single `private static final ... PATH = CompiledNodes.of(...);`
+  - generated interface methods are annotated with `@GetByPath` and `@EnsurePutByPath`
+  - array index placeholders are encoded in annotation expressions as named placeholders such as `$.items[{itemsIndex}].sku`
+  - public path getter/setter methods delegate through `PATH.method(this, ...)`
+  - generated read methods on the internal interface use the resolved schema type whenever the path can be statically represented by generated fields/properties; primitive public types use boxed internal return types
+  - paths that pass through dynamic containers such as `JsonObject`, `Map<String, Object>`, or `Object` fall back to `java.lang.Object` internal reads, and the public getter applies the same typed conversion used by the generated API surface through `Nodes`
+  - no `JsonPath` constants are generated for path accessors
+- If `packageName` is empty or the generated root class name is `Object`, generated path accessors fall back to `jsonPath` output because these shapes are not compatible with SJF4J annotation-processor implementation generation in the current baseline.
 - Primitive `boolean` path getters use JavaBean-style `isXxx()` naming; boxed `Boolean` path getters continue to use `getXxx()`.
-- Getter generation prefers dedicated `*ByPath` APIs when available; otherwise it falls back to typed access such as `getByPath(path, LocalDateTime.class)`.
-- For primitive cached-path getters backed by `JsonPath`, generation uses default-value overloads such as `getInt(this, 0)`, `getLong(this, 0L)`, `getDouble(this, 0d)`, and `getBoolean(this, false)` instead of manual null checks.
+- In `jsonPath` mode, getter generation prefers dedicated `*ByPath` / `JsonPath` APIs when available; otherwise it falls back to typed access such as `getByPath(path, LocalDateTime.class)`.
+- In `jsonPath` mode, primitive cached-path getters backed by `JsonPath` use default-value overloads such as `getInt(this, 0)`, `getLong(this, 0L)`, `getDouble(this, 0d)`, and `getBoolean(this, false)` instead of manual null checks.
+- In `compiledPath` mode, primitive public getters preserve the same default-value semantics by converting the compiled-path result to a boxed value and then mapping `null` to `0`, `0L`, `0d`, or `false` in the public method.
 - Path setter generation uses `ensurePut` semantics so missing intermediate containers are created when needed.
 - For `List<T>` path accessors, getter generation prefers `getListByPath(path, T.class)` when `T` is a concrete non-generic item type; for complex generic item types it falls back to `getListByPath(path)`.
 - Eligible descendant paths use flattened method names such as `getCustomerEmail()` and `setCustomerEmail(String value)`.
@@ -183,6 +197,7 @@ The first regression suite locks down these behaviors:
 - `pathOnly` generation without nested inner classes
 - nested field-path discovery for object and array shapes
 - path accessor generation on the root JOJO class
+- both root path strategies: `compiledPath` default and legacy `jsonPath`
 - nested enum generation and typed enum access
 - `pathOnly` enum hoisting and typed path access
 - object allOf flattening, object-property narrowing, and conflict detection

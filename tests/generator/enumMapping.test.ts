@@ -82,6 +82,7 @@ describe('generator enum mapping', () => {
       accessorMode: 'none',
       fieldStrategy: 'none',
       pathAccessorStrategy: 'all',
+      pathStrategy: 'jsonPath',
       enumMapping: 'javaEnum',
     })
 
@@ -154,6 +155,7 @@ describe('generator enum mapping', () => {
       accessorMode: 'none',
       fieldStrategy: 'none',
       pathAccessorStrategy: 'all',
+      pathStrategy: 'jsonPath',
       enumMapping: 'javaEnum',
       modelingStrategy: 'pathOnly',
     })

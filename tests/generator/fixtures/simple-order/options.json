@@ -11,6 +11,7 @@
   "fieldStrategy": "all",
   "accessorMode": "lombok",
   "pathAccessorStrategy": "required",
+  "pathStrategy": "compiledPath",
   "useValidation": true,
   "validationAnnotations": ["@NotNull", "@Size", "@Min", "@Max", "@Pattern"],
   "validationNamespace": "jakarta",

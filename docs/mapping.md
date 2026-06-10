@@ -5,28 +5,21 @@ description: "Map between POJO, record, Map, List, JsonObject, JsonArray, JOJO, 
 
 # Mapping
 
-SJF4J provides compile-time structural mapping through `@CompiledMapper`.
+SJF4J provides compile-time object mapping through `@CompiledMapper`.
 
-`NodeMapper` is deprecated. New mapping code should use `@CompiledMapper`,
-which generates direct Java mapper implementations during annotation processing.
+Like MapStruct, it generates type-safe mapping code during compilation with no
+reflection at runtime.  
 
-`@CompiledMapper` is similar in spirit to object-to-object mapping frameworks
-such as MapStruct, but it is aware of SJF4J's structural model:
+Unlike MapStruct, it can also map directly across SJF4J's Object-Based Node Tree ([OBNT](/docs/modeling.md)) shapes:
+- POJOs, records, `Map`, JOJO, and `JsonObject`
+- `List`, `Set`, Java arrays, JAJO, and `JsonArray`
+- scalar leaves such as `String`, `Number`, `Boolean`, enums, and `@NodeValue`
+- limited type-level `@OneOf` dispatch
 
-- POJO and record
-- `Map`
-- `List`, `Set`, and Java arrays
-- `JsonObject` and `JsonArray`
-- JOJO and JAJO
-
-In short:
-
-> `@CompiledMapper` is an object-to-object mapper with SJF4J structural awareness.
 
 ## Quick Start
 
-Add `sjf4j-processor` as an annotation processor, then declare a mapper
-interface:
+Declare a mapper interface:
 
 ```java
 @CompiledMapper
@@ -35,82 +28,65 @@ public interface UserMapper {
 }
 ```
 
-Get the generated mapper and use it like a normal Java object:
+Use the generated implementation:
 
 ```java
 UserMapper mapper = CompiledNodes.of(UserMapper.class);
 
-User user = new User("Ada", 36);
 UserDto dto = mapper.toDto(user);
 ```
 
-The generated implementation maps same-name properties automatically:
+Same-name properties are mapped automatically:
 
 ```text
 user.name  -> dto.name
 user.age   -> dto.age
 ```
 
-No reflection or runtime mapper lookup is needed for the generated mapping code.
-
-When the source and target shapes differ, declare only the differences:
+When names differ, describe only the difference:
 
 ```java
-@CompiledMapper
-public interface UserMapper {
-    @Mapping(target = "displayName", source = "name")
-    UserDto toDto(User user);
-}
+@Mapping(target = "displayName", source = "name")
+UserDto toDto(User user);
 ```
 
 ## Mental Model
 
-When using `@CompiledMapper`, think in terms of moving data from one shape to
-another. Start with what already matches, then describe only the differences.
+`@CompiledMapper` maps one declared source shape to one declared target shape.
+Start with the properties that already match, then add explicit rules only where
+the shapes differ.
 
 ```text
 Source shape
-(User / Map / JsonObject / JOJO / ...)
+(POJO / record / Map / JsonObject / JOJO / ...)
         |
-        | 1. Auto-map same-name properties
+        | 1. Declare a mapper method
+        |    Source -> Target, or update(Target, Source)
         |
-        | 2. Declare shape differences
-        |    @Mapping / compute / target paths
+        | 2. Let same-name properties map automatically
+        |    source.name -> target.name
         |
-        | 3. Reuse conversions when types differ
-        |    local methods / importing / using
+        | 3. Add rules for shape differences
+        |    @Mapping.source / @Mapping.compute / target paths
         |
-        | 4. Choose update behavior when mutating
+        | 4. Add converters when types differ
+        |    using / local mapper methods / imported mappers
+        |
+        | 5. Choose update behavior when mutating
         |    nulls / arrays / objects
         v
 Target shape
-(UserDto / Map / JsonObject / JOJO / ...)
+(POJO / record / Map / JsonObject / JOJO / ...)
 ```
 
-This gives a practical order for designing a mapper method:
-
-1. **Let auto mapping do the obvious work**  
-   Same-name properties should usually need no annotation.
-
-2. **Add mappings only for shape differences**  
-   Rename fields, read from paths, combine multiple source values, or compute
-   derived values.
-
-3. **Make conversions explicit when needed**  
-   Use local mapper methods, `importing`, or `@MapperOptions(using = {...})`
-   when a nested type or container element needs a specific conversion.
-
-4. **Choose policies only for update methods**  
-   Null handling and container update policies matter when an existing target is
-   being mutated.
-
-The details of auto mapping, `@Mapping`, `compute`, `using`, `importing`, path
-writes, and update policies are introduced separately below.
+Non-void abstract methods create a new target and return `null` when all source
+arguments are `null`. Void methods update the first parameter in place from the
+remaining source parameters.
 
 ## Auto Mapping
 
 By default, writable target properties are mapped from readable source
-properties with the same name.
+properties with the same node-facing name.
 
 ```java
 @CompiledMapper
@@ -133,18 +109,21 @@ Supported target writes include:
 
 Targets may be created from:
 
-- a public no-args constructor
-- a record canonical constructor
-- a unique public constructor
-- a `@MappingCreator` rule
+- public no-args constructors
+- record canonical constructors
+- unique public constructors
+- `@MappingCreator` rules
 
-Auto mapping is recursive where the processor can determine a compatible
+Auto mapping uses SJF4J node-facing property names. When present, names from
+`@NodeProperty`, Jackson `@JsonProperty`, and fastjson2 `@JSONField` participate
+in property matching.
+
+Auto mapping is recursive when the processor can determine a compatible
 structural mapping or converter.
 
 ## Explicit Property Mapping
 
-Use `@Mapping` when the target shape is not exactly the same as the source
-shape.
+Use `@Mapping` when the target shape differs from the source shape.
 
 ### Rename a Property
 
@@ -196,12 +175,12 @@ interface Views {
 ```
 
 Use the `parameterName:propertyOrPath` form when a source property needs to be
-qualified.
+qualified. With multiple source parameters, unqualified source names are resolved
+against the first source parameter.
 
 ## Computed Values
 
-`compute` is useful when a target value is derived from one or more source
-values.
+Use `compute` when a target value is derived from one or more source values.
 
 ### Inline Compute
 
@@ -217,7 +196,7 @@ interface Users {
 ```
 
 The expression is consumed by the annotation processor and emitted as generated
-Java code. It is not a runtime lambda registry.
+Java code. It is not evaluated dynamically at runtime.
 
 ### Helper Method
 
@@ -243,7 +222,8 @@ like business workflow, move that logic outside the mapper.
 
 ## Nested Mapping and Converter Selection
 
-Nested mapping works through mapper methods and converter selection.
+Nested mapping works through generated converters, local mapper methods, and
+imported compiled mappers.
 
 ### Local Mapper Methods
 
@@ -261,24 +241,6 @@ interface Users {
 If `UserDto` contains an `OrderDto` property and `User` contains an `Order`, the
 processor may use the local `Order -> OrderDto` method for that property.
 
-### Preferred Converters with `using`
-
-Use `@MapperOptions(using = {...})` to express converter preferences for one
-mapper method:
-
-```java
-@CompiledMapper
-interface Users {
-    UserDto toDto(User user);
-
-    @MapperOptions(using = {"toDto"})
-    List<UserDto> toDtos(List<User> users);
-}
-```
-
-`using` is a preference, not a forced conversion. If a value is already directly
-assignable, direct assignment wins.
-
 ### Imported Mappers
 
 Use `importing` when one compiled mapper should reuse another compiled mapper:
@@ -295,6 +257,23 @@ interface UserMapper {
 }
 ```
 
+Imported mapper interfaces must themselves be `@CompiledMapper` interfaces.
+
+### Preferred Converters with `using`
+
+Use `@MapperOptions(using = {...})` to express converter preferences for one
+mapper method:
+
+```java
+@CompiledMapper
+interface Users {
+    UserDto toDto(User user);
+
+    @MapperOptions(using = {"toDto"})
+    List<UserDto> toDtos(List<User> users);
+}
+```
+
 You can also prefer an imported method explicitly:
 
 ```java
@@ -305,88 +284,54 @@ interface UserMapper {
 }
 ```
 
-Converter selection follows this general order:
+`using` is a preference, not a forced conversion. If a value is already directly
+assignable to the target type, direct assignment wins.
 
-1. Direct assignment when the source value is assignable to the target type
-2. Preferred methods from `@MapperOptions(using = {...})`
-3. Local mapper methods
-4. Imported `@CompiledMapper` methods
-5. Generated structural helpers
-6. Built-in strict SJF4J value conversion
+### Selection Model
 
-## Strict Value Conversion
+For each target property or path, the processor first selects the value:
 
-Generated mappers use SJF4J-style strict value conversion at mapper leaves.
+1. `ignore = true` skips the target.
+2. `compute` supplies an explicit generated expression or helper call.
+3. `source` reads a named source property or path.
+4. Auto mapping reads a same-name source property.
 
-Examples include:
+Then, if the selected value is not directly assignable to the target type, the
+processor looks for a compatible conversion. It considers preferred `using`
+methods, limited `@OneOf` dispatch, local mapper methods, imported mapper
+methods, strict scalar conversion, recursive container conversion, and generated
+structural helpers. The exact choice depends on type compatibility and
+ambiguity; add `using` or an explicit helper method when the intended conversion
+is not obvious.
+
+## Strict Scalar Conversion
+
+Generated mappers use strict scalar conversion at mapper leaves. They do not try
+to coerce every arbitrary value into every arbitrary target type.
+
+Supported scalar conversion includes:
 
 - numeric widening and narrowing through SJF4J number checks
-- string, character, enum, and boolean conversion with explicit rules
+- declared `Object` values to numeric, boolean, string, character, or enum
+  targets through `Nodes.toXxx(...)` semantics
+- `String`, `Character`, and enum conversion where SJF4J has explicit node rules
 - `@NodeValue` codecs
-- dynamic `Object` leaf conversion from maps, `JsonObject`, or paths through
-  `Nodes.toXxx(...)`-style checks
 
-SJF4J does not try to make every arbitrary value fit every arbitrary target
-type. If conversion may lose meaning, make it explicit with a mapper method or a
-computed mapping.
+Examples:
 
-## Path-based Target Mapping
-
-Path-based target writes are one of the main differences between
-`@CompiledMapper` and ordinary JavaBean mappers.
-
-### Strict Path Write
-
-`@Mapping` can write to a target path:
-
-```java
-@CompiledMapper
-interface Users {
-    @Mapping(target = "$.profile.displayName", source = "name")
-    UserView toView(User user);
-}
+```text
+Long -> int
+Object -> Integer
+Object -> Boolean
+String -> MyEnum
+Character -> String
+Map -> Address
 ```
 
-Target values support three forms:
-
-- plain property or key name
-- JSONPath beginning with `$`
-- JSON Pointer beginning with `/`
-
-Plain dotted names are literal property/key names, not nested target paths.
-
-Strict target-path writes require intermediate parents to already exist. The
-root target exists, but missing nested parents are not created by plain
-`@Mapping`.
-
-### Write Only If the Parent Exists
-
-Use `@MappingIfParentPresent` when the final target parent is optional:
-
-```java
-@CompiledMapper
-interface Users {
-    @MappingIfParentPresent(target = "$.profile.name", source = "name")
-    UserView toView(User user);
-}
-```
-
-If the final parent object/container is missing, the write is skipped.
-
-### Ensure the Parent Path
-
-Use `@EnsureMapping` when missing intermediate parents should be created:
-
-```java
-@CompiledMapper
-interface Users {
-    @EnsureMapping(target = "$.profile.name", source = "name")
-    UserView toView(User user);
-}
-```
-
-This is useful when writing into map-like or JSON-like target structures.
-Index-based ensure paths are not supported by this ensure form.
+Lenient coercions such as arbitrary `String -> Number` or `Boolean -> String`
+are intentionally not generated. If a conversion may lose meaning or needs
+domain-specific parsing, define an explicit mapper method, helper method,
+`compute` expression, or `@NodeValue` codec.
 
 ## Collections, Maps, and Arrays
 
@@ -410,8 +355,8 @@ Nested containers are handled recursively when element and value types are
 declared:
 
 ```text
-List<List<User>>              -> List<List<UserDto>>
-Map<String, List<User>>       -> Map<String, List<UserDto>>
+List<List<User>>               -> List<List<UserDto>>
+Map<String, List<User>>        -> Map<String, List<UserDto>>
 Map<String, Map<String, User>> -> Map<String, Map<String, UserDto>>
 ```
 
@@ -419,8 +364,20 @@ Supported array-like sources include declared `List`, declared `Set`, Java
 arrays, `JsonArray`, JAJO, and raw source `List` / `Set` treated as
 `List<Object>` / `Set<Object>`.
 
-Raw target collection and map shapes are rejected because no element or value
-type is available for generated conversion.
+Typed Java array and typed collection root targets allocate fresh typed
+containers and apply element conversion. Plain `JsonArray` and JAJO root targets
+are different: they are shallow one-level copies, and elements are copied as-is.
+
+Current container limits:
+
+- raw or non-parameterized target collection/map shapes are rejected
+- map key conversion is not generated; key types must already match
+- root `Map` projection from POJO / `JsonObject` / JOJO requires a compatible
+  key type, commonly `String`
+- when a declared root source is `Object`, array-like projection accepts runtime
+  `List` values, not runtime `Set` values
+- other declared `Collection` source types are rejected unless declared as
+  `List` or `Set`
 
 ## Structural Mapping with OBNT Types
 
@@ -429,20 +386,25 @@ between Java objects and OBNT-facing structures.
 
 ### Object-like Sources to POJO or Record Targets
 
-Object-like sources such as `Map` and `JsonObject` can bind to declared POJO,
-record, or constructor targets:
+Object-like sources such as `Map`, `JsonObject`, and JOJO can bind to declared
+POJO, record, or constructor targets:
 
 ```java
 @CompiledMapper
 interface Users {
     UserDto toDto(Map<String, Object> source);
+
+    UserDto toDto(JsonObject source);
 }
 ```
 
-### POJO, JsonObject, or JOJO to Map
+Nested object-like values can be converted recursively when the target type is
+declared.
+
+### POJO, Record, JsonObject, or JOJO to Map
 
 Root `Map<String, V>` targets can be projected from POJO, record, `JsonObject`,
-or JOJO sources:
+or JOJO sources. Values are converted according to the declared map value type.
 
 ```java
 @CompiledMapper
@@ -452,7 +414,7 @@ interface Users {
 ```
 
 Map key conversion is not generated; root map projection expects compatible key
-types, commonly `String`.
+types.
 
 ### JsonObject Targets
 
@@ -460,7 +422,9 @@ Plain root `JsonObject` projection is shallow:
 
 - first-level readable properties or entries are copied
 - child object, array, or POJO values are shared as-is
-- deep materialization is not performed by the generated mapper
+- deep OBNT materialization is not performed by the generated mapper
+
+Use a typed target when you need recursive conversion of child values.
 
 ### JOJO Targets
 
@@ -468,24 +432,138 @@ JOJO root create targets combine typed declared properties with shallow dynamic
 extras:
 
 - declared JOJO properties are mapped using normal typed target rules
-- first-level dynamic entries are copied into the target as JSON-style extras
+- first-level dynamic entries that do not match declared JOJO properties are
+  copied into the target as JSON-style extras
+
+JOJO update targets are not generated.
 
 ### JsonArray and JAJO Targets
 
 Plain `JsonArray` and JAJO root create targets are shallow one-level copies.
-Elements are copied as-is.
+Elements are copied as-is, with no scalar conversion, preferred mapper use, or
+deep materialization.
 
-Typed Java array and typed collection targets are different: they allocate fresh
-typed containers and apply element conversion.
+Typed Java array and typed collection targets allocate fresh typed containers and
+apply element conversion.
+
+## OneOf Dispatch
+
+`@CompiledMapper` supports limited type-level `@OneOf` dispatch for create
+mappings.
+
+Two forms are supported:
+
+- discriminator-key dispatch when the target `@OneOf` declares a `key`
+- shape-based dispatch when the target `@OneOf` does not declare a `key`
+
+Example:
+
+```java
+@OneOf(key = "type", value = {
+        @OneOf.Mapping(value = Cat.class, when = "cat"),
+        @OneOf.Mapping(value = Dog.class, when = "dog")
+})
+interface Animal {}
+
+@CompiledMapper
+interface Animals {
+    Animal animal(Map<String, Object> source);
+}
+```
+
+Current limits:
+
+- root `@OneOf` update targets are unsupported
+- field- or parameter-local `@OneOf` dispatch is outside compiled mapper scope
+- discriminator paths and non-current scopes are not generated
+- when no branch matches, behavior follows the target `@OneOf` no-match policy
+
+## Target Path Writes
+
+Target path writes are one of the main differences between `@CompiledMapper` and
+ordinary JavaBean mappers.
+
+### Strict Target Path Write with `@Mapping`
+
+`@Mapping` can write to a JSONPath or JSON Pointer target path:
+
+```java
+@CompiledMapper
+interface Users {
+    @Mapping(target = "$.profile.displayName", source = "name")
+    UserView toView(User user);
+}
+```
+
+Target values support three forms:
+
+- plain property or key name
+- JSONPath beginning with `$`
+- JSON Pointer beginning with `/`
+
+Plain dotted names are literal property/key names, not nested target paths.
+
+Strict target-path writes require intermediate parents to already exist. The
+root target exists, but missing nested parents are not created by plain
+`@Mapping`. Use `@EnsureMapping` when parents should be created.
+
+`@Mapping(ignore = true)` does not support target paths.
+
+### Write Only If the Parent Exists
+
+Use `@MappingIfParentPresent` when the final target parent is optional:
+
+```java
+@CompiledMapper
+interface Users {
+    @MappingIfParentPresent(target = "$.profile.name", source = "name")
+    void update(UserView target, User user);
+}
+```
+
+If the final parent object/container is missing, the write is skipped.
+
+Rules:
+
+- `target` must be JSONPath or JSON Pointer, not a plain property name
+- the path must contain a non-root child
+- path segments may be property names or array/list indexes
+- `sources` may be used only with `compute`
+- `nestedMapper` may name a local mapper method, but cannot be combined with
+  `compute`
+
+### Ensure Missing Parents
+
+Use `@EnsureMapping` when missing intermediate parents should be created:
+
+```java
+@CompiledMapper
+interface Users {
+    @EnsureMapping(target = "$.profile.name", source = "name")
+    void update(UserView target, User user);
+}
+```
+
+This is useful when writing into map-like or JSON-like target structures.
+
+Rules:
+
+- `target` must be JSONPath or JSON Pointer, not a plain property name
+- the path must contain a non-root child
+- index-based target path segments are not supported by `@EnsureMapping`
+- `nestedMapper` may name a local mapper method, but cannot be combined with
+  `compute`
+
+Target-path writes do not support non-default array or object update policies;
+use normal property update policies for container properties.
 
 ## Target Creation
 
-By default, generated mappers create targets through one of the normal target
-construction rules:
+Targets are normally created using:
 
-- public no-args constructor
-- record canonical constructor
-- unique public constructor
+- public no-args constructors
+- record canonical constructors
+- unique public constructors
 
 Use `@MappingCreator` when the declared target type cannot or should not be
 created directly.
@@ -502,8 +580,8 @@ interface Users {
 }
 ```
 
-The implementation must be assignable to the declared target type and must
-itself satisfy normal target construction rules.
+The implementation must be assignable to `targetType` and must itself satisfy
+normal target construction rules.
 
 ### Factory Method
 
@@ -523,6 +601,17 @@ interface Users {
 
 Factory methods are useful when construction needs to go through a controlled
 factory while mapping still writes normal mutable target properties.
+
+`@MappingCreator` rules are selected by assignability. The most specific
+matching `targetType` wins; equal or unrelated matches are rejected as ambiguous.
+Creators declared on parent mapper interfaces are inherited.
+
+Current creator method rules:
+
+- `creator` supports the `this::method` form
+- the method must be `default` or `static`
+- the method must not declare parameters
+- the return type must be assignable to `targetType`
 
 ## Update Mapping
 
@@ -545,8 +634,10 @@ For update methods:
 - the target parameter itself is not replaced
 - mapped properties and containers are updated according to null and container
   policies
+- when all source parameters are `null`, the generated method returns without
+  changing the target
 
-## Null Handling
+### Null Value Policies
 
 Use `NullValuePolicy` to control how null source values affect mutable target
 properties.
@@ -562,115 +653,128 @@ interface Users {
 | Policy | Behavior |
 |--------|----------|
 | `SET_TO_NULL` | Write `null` to the target property when the source property is `null` |
-| `IGNORE` | Keep the existing target property when the source property is `null` |
+| `IGNORE` | Keep the existing target property or mutable create-target default when the source property is `null` |
 
-`IGNORE` is most useful for partial update methods. Constructor and record
-create targets cannot generally use `IGNORE` for required constructor arguments,
-because those arguments must be supplied.
+Boundaries:
 
-## Container Update Policies
+- default null policy is `SET_TO_NULL`
+- `IGNORE` is supported for mutable no-args create targets and update targets
+- constructor and record create targets cannot use `IGNORE`, because required
+  constructor arguments must be supplied
+- root container update methods return immediately when the source root is
+  `null`, because the target parameter itself cannot be reassigned
 
-Update methods can also control how existing array-like and object-like
-containers are updated.
+### Array Policies
 
-### Array-like Policy
-
-| Policy | Behavior |
-|--------|----------|
-| `CLEAR_ADD` | Clear the target container, then add source elements |
-| `ADD` | Keep existing target elements and append source elements |
-| `SET` | Replace the target property |
-
-### Object-like Policy
+Array-like policies control how update methods handle existing list, set, or
+other supported array-like container target properties.
 
 | Policy | Behavior |
 |--------|----------|
-| `PUT` | Put source entries into the target object/map |
-| `CLEAR_PUT` | Clear the target object/map, then put source entries |
-| `PUT_IF_ABSENT` | Put only entries whose keys are absent from the target |
-| `SET` | Replace the target property |
+| `SET` | Replace the target property with a newly mapped container |
+| `CLEAR_ADD` | Clear the existing target container, then add mapped source elements |
+| `ADD` | Keep existing target elements and append mapped source elements |
 
-Method-level defaults:
+Method-level default:
 
 ```java
 @CompiledMapper
 interface Users {
-    @MapperOptions(
-            arrays = ArrayPolicy.ADD,
-            objects = ObjectPolicy.PUT)
+    @MapperOptions(arrays = ArrayPolicy.ADD)
     void update(UserDto target, User source);
 }
 ```
 
-Property-level overrides:
+Property-level override:
 
 ```java
 @CompiledMapper
 interface Users {
     @Mapping(target = "tags", array = ArrayPolicy.ADD)
+    void update(UserDto target, User source);
+}
+```
+
+Notes:
+
+- default array-like update behavior is `CLEAR_ADD`
+- `@Mapping.array` is supported only on `void` update mapper methods
+- root collection update does not support `ArrayPolicy.SET`; use `CLEAR_ADD` or
+  `ADD`
+- null handling is applied before container update policy
+
+### Object Policies
+
+Object-like policies control how update methods handle existing map-like target
+properties.
+
+| Policy | Behavior |
+|--------|----------|
+| `PUT` | Put mapped source entries into the existing target map/object |
+| `CLEAR_PUT` | Clear the existing target map/object, then put mapped source entries |
+| `PUT_IF_ABSENT` | Put only when the key is missing or currently maps to `null` |
+
+Method-level default:
+
+```java
+@CompiledMapper
+interface Users {
+    @MapperOptions(objects = ObjectPolicy.CLEAR_PUT)
+    void update(UserDto target, User source);
+}
+```
+
+Property-level override:
+
+```java
+@CompiledMapper
+interface Users {
     @Mapping(target = "attributes", object = ObjectPolicy.PUT_IF_ABSENT)
     void update(UserDto target, User source);
 }
 ```
 
-Null handling is applied before container update policy. For example, with
-`NullValuePolicy.IGNORE`, a null source container keeps the existing target
-container unchanged.
+Notes:
 
-## Migration from `NodeMapper`
-
-`NodeMapper` used a runtime builder and an ordered action pipeline.
-`@CompiledMapper` uses an annotation-processed static mapping model.
-
-| `NodeMapper` | `@CompiledMapper` |
-|--------------|-------------------|
-| `NodeMapper.builder(S.class, T.class)` | `@CompiledMapper interface` |
-| `.copy(target, source)` | `@Mapping(target = ..., source = ...)` |
-| `.ensureCopy(target, source)` | `@EnsureMapping(target = ..., source = ...)` |
-| `.compute(target, fn)` | `@Mapping(target = ..., sources = ..., compute = ...)` |
-| `.value(target, value)` | `compute`, helper method, or default value logic |
-| `.with(nestedMapper)` | local mapper method, `importing`, or `using` |
-| runtime action list | compile-time generated implementation |
-| declaration order controls final writes | processor builds a static target mapping model |
-
-A practical migration path:
-
-1. Create a `@CompiledMapper` interface for the source and target types.
-2. Remove mappings that only copied same-name properties; let auto mapping do
-   that work.
-3. Convert `.copy(...)` rules to `@Mapping`.
-4. Convert `.ensureCopy(...)` rules to `@EnsureMapping`.
-5. Convert `.compute(...)` rules to `compute` expressions or helper methods.
-6. Convert `.with(...)` nested mappers to local mapper methods, imported
-   compiled mappers, or `@MapperOptions(using = {...})`.
-7. Add explicit null and container update policies for update-style mappings.
-
-The biggest conceptual change is that mapping is no longer an ordered list of
-runtime actions. Prefer a stable target mapping model with explicit source,
-conversion, and write rules.
+- default object-like update behavior is `PUT`
+- there is no `ObjectPolicy.SET`
+- `@Mapping.object` is supported only on `void` update mapper methods
+- `PUT_IF_ABSENT` skips conversion for existing non-null target entries
+- null handling is applied before container update policy
 
 ## Compared with MapStruct
 
-`@CompiledMapper` has a familiar shape if you already use MapStruct:
+Both frameworks provide:
 
+- compile-time code generation
 - mapper interfaces
-- annotation processing
-- generated implementations
-- same-name property auto mapping
+- automatic property mapping
 - explicit property mappings
-- helper methods and converters
+- helper methods and converter methods
 
-SJF4J adds structural mapping features that are natural for OBNT:
+`@CompiledMapper` additionally supports SJF4J structural mapping features:
 
-- `JsonObject`, `JsonArray`, JOJO, and JAJO awareness
+- Map / `JsonObject` / JOJO awareness
+- `JsonArray`, JAJO, Java array, `List`, and `Set` container mapping
+- JSONPath and JSON Pointer source reads
 - JSONPath and JSON Pointer target writes
-- Map/List/object structural projection
-- strict SJF4J value conversion
-- mapping between typed Java models and JSON-like structures
+- strict SJF4J scalar conversion
+- typed mapping between Java models and JSON-like structures
+- `@EnsureMapping`
+- `@MappingIfParentPresent`
+- limited type-level `@OneOf` dispatch
 
 Use MapStruct when your world is purely JavaBean-to-JavaBean and you prefer its
 ecosystem. Use `@CompiledMapper` when the mapping crosses SJF4J structural
 boundaries or needs SJF4J path and node semantics.
+
+## Performance Notes
+
+In SJF4J's JMH mapper benchmarks, `@CompiledMapper` performs at roughly the same level as MapStruct and hand-written
+mapping. 
+See [Benchmarks](/docs/benchmarks.md) for local benchmark results. 
+
+SJF4J is also listed in the third-party [Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark).
 
 ## Current Notes and Limits
 
@@ -680,13 +784,15 @@ belongs to SJF4J facade/binding APIs instead of mapper generation.
 Current notes:
 
 - mapper interfaces and mapper methods should not declare type parameters
-- map key conversion is not generated
 - raw target collection and map types are rejected
+- map key conversion is not generated
+- arbitrary string-to-number or boolean-to-string coercion is not generated
 - Java array and JAJO targets are create-oriented rather than general in-place
   update targets
 - JOJO update targets are not generated
-- full runtime facade context and private binding remain part of node
-  binding/facade APIs
+- plain root `JsonObject`, `JsonArray`, and JAJO projections are shallow
+- full runtime facade context, runtime converters, private binding, and deep
+  OBNT materialization remain part of node binding/facade APIs
 
 ## Best Practices
 

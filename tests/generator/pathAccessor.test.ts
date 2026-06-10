@@ -39,6 +39,7 @@ describe('generator path accessors', () => {
     }`, {
       accessorMode: 'none',
       pathAccessorStrategy: 'all',
+      pathStrategy: 'jsonPath',
     })
 
     expect(code).toContain('import org.sjf4j.path.JsonPath;')
@@ -84,6 +85,7 @@ describe('generator path accessors', () => {
     }`, {
       accessorMode: 'none',
       pathAccessorStrategy: 'required',
+      pathStrategy: 'jsonPath',
     })
 
     expect(code).toContain('public String getCustomerEmail() {')
@@ -115,6 +117,7 @@ describe('generator path accessors', () => {
     }`, {
       accessorMode: 'none',
       pathAccessorStrategy: 'all',
+      pathStrategy: 'jsonPath',
       dateTimeMapping: 'LocalDateTime',
     })
 
@@ -142,8 +145,9 @@ describe('generator path accessors', () => {
     }`, {
       accessorMode: 'none',
       pathAccessorStrategy: 'all',
-      integerType: 'int',
-      numberType: 'double',
+      pathStrategy: 'jsonPath',
+      integerMapping: 'int',
+      numberMapping: 'double',
     })
 
     expect(code).toContain('private static final JsonPath PATH_META_ENABLED = JsonPath.parse("$.meta.enabled");')
@@ -174,6 +178,7 @@ describe('generator path accessors', () => {
     }`, {
       accessorMode: 'none',
       pathAccessorStrategy: 'all',
+      pathStrategy: 'jsonPath',
       modelingStrategy: 'pojo',
     })
 
@@ -210,6 +215,7 @@ describe('generator path accessors', () => {
     }`, {
       accessorMode: 'none',
       pathAccessorStrategy: 'all',
+      pathStrategy: 'jsonPath',
       modelingStrategy: 'pathOnly',
     })
 
@@ -247,10 +253,184 @@ describe('generator path accessors', () => {
     }`, {
       accessorMode: 'none',
       pathAccessorStrategy: 'all',
+      pathStrategy: 'jsonPath',
       modelingStrategy: 'pathOnly',
     })
 
     expect(code).toContain('/** Customer address */\n    public JsonObject getCustomerAddress() {')
     expect(code).toContain('/** Zip code */\n    public String getCustomerAddressZip() {')
+  })
+
+  it('uses compiled path support by default', () => {
+    const code = generate(`{
+      "title": "Order",
+      "type": "object",
+      "properties": {
+        "customer": {
+          "type": "object",
+          "properties": {
+            "email": { "type": "string" }
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sku": { "type": "string" }
+            }
+          }
+        }
+      }
+    }`, {
+      accessorMode: 'none',
+      pathAccessorStrategy: 'all',
+    })
+
+    expect(code).toContain('import org.sjf4j.annotation.path.CompiledPath;')
+    expect(code).toContain('import org.sjf4j.annotation.path.EnsurePutByPath;')
+    expect(code).toContain('import org.sjf4j.annotation.path.GetByPath;')
+    expect(code).toContain('import org.sjf4j.compiled.CompiledNodes;')
+    expect(code).not.toContain('import org.sjf4j.node.Nodes;')
+    expect(code).not.toContain('import org.sjf4j.path.JsonPath;')
+    expect(code).toContain('@CompiledPath\n    interface OrderPath {')
+    expect(code).toContain('private static final OrderPath PATH = CompiledNodes.of(OrderPath.class);')
+    expect(code).toContain('@GetByPath("$.customer.email")\n        String getCustomerEmail(Order root);')
+    expect(code).toContain('@EnsurePutByPath("$.customer.email")\n        void setCustomerEmail(Order root, String value);')
+    expect(code).toContain('@GetByPath("$.items[{itemsIndex}].sku")\n        String getItemsSku(Order root, int itemsIndex);')
+    expect(code).toContain('return PATH.getCustomerEmail(this);')
+    expect(code).toContain('return PATH.getItemsSku(this, itemsIndex);')
+    expect(code).toContain('PATH.setItemsSku(this, itemsIndex, value);')
+  })
+
+  it('preserves primitive defaults for compiled path getters', () => {
+    const code = generate(`{
+      "title": "Profile",
+      "type": "object",
+      "properties": {
+        "meta": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "weight": { "type": "number" },
+            "count": { "type": "integer" }
+          }
+        }
+      }
+    }`, {
+      accessorMode: 'none',
+      pathAccessorStrategy: 'all',
+      booleanMapping: 'boolean',
+      numberMapping: 'double',
+      integerMapping: 'int',
+    })
+
+    expect(code).not.toContain('import org.sjf4j.node.Nodes;')
+    expect(code).toContain('@GetByPath("$.meta.enabled")\n        Boolean isMetaEnabled(Profile root);')
+    expect(code).toContain('public boolean isMetaEnabled() {\n        final Boolean value = PATH.isMetaEnabled(this);\n        return value != null && value;')
+    expect(code).toContain('@GetByPath("$.meta.weight")\n        Double getMetaWeight(Profile root);')
+    expect(code).toContain('public double getMetaWeight() {\n        final Double value = PATH.getMetaWeight(this);\n        return value == null ? 0d : value;')
+    expect(code).toContain('@GetByPath("$.meta.count")\n        Integer getMetaCount(Profile root);')
+    expect(code).toContain('public int getMetaCount() {\n        final Integer value = PATH.getMetaCount(this);\n        return value == null ? 0 : value;')
+  })
+
+  it('falls back to Object compiled getters after dynamic JsonObject intermediates', () => {
+    const code = generate(`{
+      "title": "Order",
+      "type": "object",
+      "properties": {
+        "customer": {
+          "type": "object",
+          "properties": {
+            "address": {
+              "type": "object",
+              "properties": {
+                "zip": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }`, {
+      accessorMode: 'none',
+      pathAccessorStrategy: 'all',
+      modelingStrategy: 'pathOnly',
+    })
+
+    expect(code).toContain('import org.sjf4j.node.Nodes;')
+    expect(code).toContain('@GetByPath("$.customer.address.zip")\n        java.lang.Object getCustomerAddressZip(Order root);')
+    expect(code).toContain('return Nodes.toString(PATH.getCustomerAddressZip(this));')
+  })
+
+  it('boxes primitive array item types in compiled path signatures', () => {
+    const code = generate(`{
+      "title": "Profile",
+      "type": "object",
+      "properties": {
+        "meta": {
+          "type": "object",
+          "properties": {
+            "scores": {
+              "type": "array",
+              "items": { "type": "integer" }
+            }
+          }
+        }
+      }
+    }`, {
+      accessorMode: 'none',
+      pathAccessorStrategy: 'all',
+      integerMapping: 'int',
+    })
+
+    expect(code).toContain('public List<Integer> getMetaScores() {')
+    expect(code).toContain('@GetByPath("$.meta.scores")\n        List<Integer> getMetaScores(Profile root);')
+    expect(code).not.toContain('List<int>')
+  })
+
+  it('falls back to JsonPath path accessors for the unnamed package', () => {
+    const code = generate(`{
+      "title": "Order",
+      "type": "object",
+      "properties": {
+        "customer": {
+          "type": "object",
+          "properties": {
+            "email": { "type": "string" }
+          }
+        }
+      }
+    }`, {
+      packageName: '',
+      accessorMode: 'none',
+      pathAccessorStrategy: 'all',
+    })
+
+    expect(code).toContain('import org.sjf4j.path.JsonPath;')
+    expect(code).toContain('private static final JsonPath PATH_CUSTOMER_EMAIL = JsonPath.parse("$.customer.email");')
+    expect(code).not.toContain('import org.sjf4j.annotation.path.CompiledPath;')
+    expect(code).not.toContain('annotation.path.CompiledPath')
+  })
+
+  it('falls back to JsonPath path accessors when the root class is Object', () => {
+    const code = generate(`{
+      "title": "Object",
+      "type": "object",
+      "properties": {
+        "customer": {
+          "type": "object",
+          "properties": {
+            "email": { "type": "string" }
+          }
+        }
+      }
+    }`, {
+      accessorMode: 'none',
+      pathAccessorStrategy: 'all',
+    })
+
+    expect(code).toContain('public class Object extends JsonObject')
+    expect(code).toContain('import org.sjf4j.path.JsonPath;')
+    expect(code).not.toContain('annotation.path.CompiledPath')
   })
 })

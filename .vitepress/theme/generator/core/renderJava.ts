@@ -400,6 +400,28 @@ function buildJsonPathLiteral(path: string): string {
   return JSON.stringify(buildJsonPathExpression(path, []).slice(1, -1))
 }
 
+function buildCompiledPathAnnotationLiteral(path: string, indexParams: Array<{ name: string }>): string {
+  const segments = path.split('/').filter(Boolean)
+  const parts: string[] = ['$']
+  let arrayIndex = 0
+
+  for (const segment of segments) {
+    if (/^\d+$/.test(segment)) {
+      parts.push(`[{${indexParams[arrayIndex].name}}]`)
+      arrayIndex += 1
+      continue
+    }
+
+    if (/^[A-Za-z_$][\w$]*$/.test(segment)) {
+      parts.push(`.${segment}`)
+    } else {
+      parts.push(`["${segment.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"]`)
+    }
+  }
+
+  return JSON.stringify(parts.join(''))
+}
+
 function buildPathConstantName(path: string): string {
   return `PATH_${path
     .split('/')
@@ -421,6 +443,244 @@ function getFallbackTypeNameForPath(path: string): string {
   }
 
   return toPascalCase(last)
+}
+
+function renderJsonPathGetterBody(typeName: string, pathReference: string, indentLevel: number): string {
+  const bodyIndent = getIndent(indentLevel + 2)
+
+  switch (typeName) {
+    case 'String':
+      return `${bodyIndent}return ${pathReference}.getString(this);`
+    case 'int':
+      return `${bodyIndent}return ${pathReference}.getInt(this, 0);`
+    case 'Integer':
+      return `${bodyIndent}return ${pathReference}.getInt(this);`
+    case 'long':
+      return `${bodyIndent}return ${pathReference}.getLong(this, 0L);`
+    case 'Long':
+      return `${bodyIndent}return ${pathReference}.getLong(this);`
+    case 'double':
+      return `${bodyIndent}return ${pathReference}.getDouble(this, 0d);`
+    case 'Double':
+      return `${bodyIndent}return ${pathReference}.getDouble(this);`
+    case 'boolean':
+      return `${bodyIndent}return ${pathReference}.getBoolean(this, false);`
+    case 'Boolean':
+      return `${bodyIndent}return ${pathReference}.getBoolean(this);`
+    case 'BigInteger':
+      return `${bodyIndent}return ${pathReference}.getBigInteger(this);`
+    case 'BigDecimal':
+      return `${bodyIndent}return ${pathReference}.getBigDecimal(this);`
+    case 'JsonObject':
+      return `${bodyIndent}return ${pathReference}.getJsonObject(this);`
+    case 'Map<String, Object>':
+      return `${bodyIndent}return ${pathReference}.getMap(this);`
+    case 'LocalDate':
+      return `${bodyIndent}return ${pathReference}.get(this, LocalDate.class);`
+    case 'LocalDateTime':
+      return `${bodyIndent}return ${pathReference}.get(this, LocalDateTime.class);`
+    case 'OffsetDateTime':
+      return `${bodyIndent}return ${pathReference}.get(this, OffsetDateTime.class);`
+    case 'Instant':
+      return `${bodyIndent}return ${pathReference}.get(this, Instant.class);`
+    default:
+      if (typeName.startsWith('List<')) {
+        const itemType = typeName.slice(5, -1)
+        if (!itemType.includes('<') && itemType !== 'Map<String, Object>') {
+          return `${bodyIndent}return ${pathReference}.getList(this, ${itemType}.class);`
+        }
+        return `${bodyIndent}return (${typeName}) ${pathReference}.getList(this);`
+      }
+      return `${bodyIndent}return ${pathReference}.get(this, ${typeName}.class);`
+  }
+}
+
+function renderCompiledPathPublicGetterBody(
+  publicTypeName: string,
+  internalTypeName: string,
+  callExpression: string,
+  indentLevel: number,
+): string {
+  const bodyIndent = getIndent(indentLevel + 2)
+
+  if (internalTypeName !== 'java.lang.Object') {
+    switch (publicTypeName) {
+      case 'int':
+        return `${bodyIndent}final Integer value = ${callExpression};\n${bodyIndent}return value == null ? 0 : value;`
+      case 'long':
+        return `${bodyIndent}final Long value = ${callExpression};\n${bodyIndent}return value == null ? 0L : value;`
+      case 'double':
+        return `${bodyIndent}final Double value = ${callExpression};\n${bodyIndent}return value == null ? 0d : value;`
+      case 'boolean':
+        return `${bodyIndent}final Boolean value = ${callExpression};\n${bodyIndent}return value != null && value;`
+      default:
+        return `${bodyIndent}return ${callExpression};`
+    }
+  }
+
+  switch (publicTypeName) {
+    case 'String':
+      return `${bodyIndent}return Nodes.toString(${callExpression});`
+    case 'int':
+      return `${bodyIndent}final Integer value = Nodes.toInt(${callExpression});\n${bodyIndent}return value == null ? 0 : value;`
+    case 'Integer':
+      return `${bodyIndent}return Nodes.toInt(${callExpression});`
+    case 'long':
+      return `${bodyIndent}final Long value = Nodes.toLong(${callExpression});\n${bodyIndent}return value == null ? 0L : value;`
+    case 'Long':
+      return `${bodyIndent}return Nodes.toLong(${callExpression});`
+    case 'double':
+      return `${bodyIndent}final Double value = Nodes.toDouble(${callExpression});\n${bodyIndent}return value == null ? 0d : value;`
+    case 'Double':
+      return `${bodyIndent}return Nodes.toDouble(${callExpression});`
+    case 'boolean':
+      return `${bodyIndent}final Boolean value = Nodes.toBoolean(${callExpression});\n${bodyIndent}return value != null && value;`
+    case 'Boolean':
+      return `${bodyIndent}return Nodes.toBoolean(${callExpression});`
+    case 'BigInteger':
+      return `${bodyIndent}return Nodes.toBigInteger(${callExpression});`
+    case 'BigDecimal':
+      return `${bodyIndent}return Nodes.toBigDecimal(${callExpression});`
+    case 'JsonObject':
+      return `${bodyIndent}return Nodes.toJsonObject(${callExpression});`
+    case 'Map<String, Object>':
+      return `${bodyIndent}return Nodes.toMap(${callExpression});`
+    case 'LocalDate':
+      return `${bodyIndent}return Nodes.to(${callExpression}, LocalDate.class);`
+    case 'LocalDateTime':
+      return `${bodyIndent}return Nodes.to(${callExpression}, LocalDateTime.class);`
+    case 'OffsetDateTime':
+      return `${bodyIndent}return Nodes.to(${callExpression}, OffsetDateTime.class);`
+    case 'Instant':
+      return `${bodyIndent}return Nodes.to(${callExpression}, Instant.class);`
+    default:
+      if (publicTypeName.startsWith('List<')) {
+        const itemType = publicTypeName.slice(5, -1)
+        if (!itemType.includes('<') && itemType !== 'Map<String, Object>') {
+          return `${bodyIndent}return Nodes.toList(${callExpression}, ${itemType}.class);`
+        }
+        return `${bodyIndent}return (${publicTypeName}) Nodes.toList(${callExpression});`
+      }
+      return `${bodyIndent}return Nodes.to(${callExpression}, ${publicTypeName}.class);`
+  }
+}
+
+function getSchemaNodeAtPath(rootSchema: SchemaNode, path: string): SchemaNode | undefined {
+  const segments = path.split('/').filter(Boolean)
+  let current: SchemaNode | undefined = rootSchema
+
+  for (const segment of segments) {
+    if (!current) return undefined
+    if (/^\d+$/.test(segment)) {
+      current = getDeclaredType(current) === 'array' ? current.items : undefined
+    } else {
+      current = getDeclaredType(current) === 'object' ? current.properties?.[segment] : undefined
+    }
+  }
+
+  return current
+}
+
+function boxesPrimitiveType(typeName: string): string {
+  switch (typeName) {
+    case 'int':
+      return 'Integer'
+    case 'long':
+      return 'Long'
+    case 'double':
+      return 'Double'
+    case 'boolean':
+      return 'Boolean'
+    case 'Object':
+      return 'java.lang.Object'
+    default:
+      return typeName
+  }
+}
+
+function boxTypeForGenericElement(typeName: string): string {
+  if (typeName.startsWith('List<') && typeName.endsWith('>')) {
+    return `List<${boxTypeForGenericElement(typeName.slice(5, -1))}>`
+  }
+
+  switch (typeName) {
+    case 'int':
+      return 'Integer'
+    case 'long':
+      return 'Long'
+    case 'double':
+      return 'Double'
+    case 'boolean':
+      return 'Boolean'
+    default:
+      return typeName
+  }
+}
+
+function isDynamicCompiledPathIntermediateType(typeName: string): boolean {
+  return typeName === 'JsonObject' || typeName === 'Map<String, Object>' || typeName === 'Object' || typeName === 'java.lang.Object'
+}
+
+function hasDynamicCompiledPathIntermediate(
+  rootSchema: SchemaNode,
+  path: string,
+  generatorOptions: GeneratorOptions,
+  fieldOverrides: Record<string, FieldOverride>,
+): boolean {
+  const segments = path.split('/').filter(Boolean)
+  const tempImports = new Set<string>()
+
+  for (let length = 1; length < segments.length; length += 1) {
+    const prefixPath = `/${segments.slice(0, length).join('/')}`
+    const prefixNode = getSchemaNodeAtPath(rootSchema, prefixPath)
+    const prefixType = resolveTypeNameForPath(prefixNode, prefixPath, generatorOptions, tempImports, fieldOverrides)
+    if (isDynamicCompiledPathIntermediateType(prefixType)) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function resolveCompiledPathGetterType(
+  rootSchema: SchemaNode,
+  path: string,
+  typeName: string,
+  generatorOptions: GeneratorOptions,
+  fieldOverrides: Record<string, FieldOverride>,
+): string {
+  if (hasDynamicCompiledPathIntermediate(rootSchema, path, generatorOptions, fieldOverrides)) {
+    return 'java.lang.Object'
+  }
+
+  return boxesPrimitiveType(typeName)
+}
+
+function collectDeclaredTypeNames(blocks: string[]): Set<string> {
+  const names = new Set<string>()
+
+  for (const block of blocks) {
+    const matches = block.matchAll(/public(?:\s+static)?\s+(?:class|enum)\s+(\w+)/g)
+    for (const match of matches) {
+      names.add(match[1])
+    }
+  }
+
+  return names
+}
+
+function resolveCompiledPathInterfaceName(rootClassName: string, declaredTypeNames: Set<string>): string {
+  const baseName = `${rootClassName}Path`
+  if (!declaredTypeNames.has(baseName)) {
+    return baseName
+  }
+
+  let suffix = 2
+  while (declaredTypeNames.has(`${baseName}${suffix}`)) {
+    suffix += 1
+  }
+
+  return `${baseName}${suffix}`
 }
 
 function resolveTypeNameForPath(
@@ -451,7 +711,7 @@ function resolveTypeNameForPath(
 
   if (getDeclaredType(node) === 'array') {
     imports.add('java.util.List')
-    return `List<${resolveTypeNameForPath(node.items, `${propertyPath}/0`, generatorOptions, imports, fieldOverrides)}>`
+    return `List<${boxTypeForGenericElement(resolveTypeNameForPath(node.items, `${propertyPath}/0`, generatorOptions, imports, fieldOverrides))}>`
   }
 
   if (isStringEnumSchema(node) && generatorOptions.enumMapping === 'javaEnum') {
@@ -527,13 +787,15 @@ function renderPathGetterBody(typeName: string, pathExpression: string, indentLe
 
 function renderPathAccessorBlock(
   rootSchema: SchemaNode,
+  rootClassName: string,
   generatorOptions: GeneratorOptions,
   imports: Set<string>,
   fieldOverrides: Record<string, FieldOverride>,
   indentLevel: number,
-): { constants: string; methods: string } {
+  declaredTypeNames: Set<string>,
+): { supportTypes: string; constants: string; methods: string } {
   if (!shouldRenderObjectAsJojo(rootSchema, generatorOptions)) {
-    return { constants: '', methods: '' }
+    return { supportTypes: '', constants: '', methods: '' }
   }
 
   const fields = collectSchemaFields(rootSchema, generatorOptions.useBigDecimal)
@@ -545,14 +807,71 @@ function renderPathAccessorBlock(
     })
 
   if (fields.length === 0) {
-    return { constants: '', methods: '' }
+    return { supportTypes: '', constants: '', methods: '' }
   }
 
   const memberIndent = getIndent(indentLevel + 1)
   const pathConstantLines: string[] = []
+  const publicMethods: string[] = []
+  const effectivePathStrategy = generatorOptions.pathStrategy === 'compiledPath' && generatorOptions.packageName.trim() && rootClassName !== 'Object'
+    ? 'compiledPath'
+    : 'jsonPath'
 
-  const methods = fields.map((field) => {
+  if (effectivePathStrategy === 'jsonPath') {
+    const methods = fields.map((field) => {
+      const typeName = resolveTypeNameForPath(field.node, field.path, generatorOptions, imports, fieldOverrides)
+      const methodSuffix = buildPathAccessorMethodName(field.path)
+      const getterName = buildGetterMethodName(typeName, methodSuffix)
+      const fieldJavaDocText = resolveJavaDocText(generatorOptions, field.node?.title, field.node?.description)
+      const getterDoc = isPathOnlyMode(generatorOptions) && fieldJavaDocText
+        ? `${memberIndent}/** ${escapeJavaDoc(fieldJavaDocText)} */\n`
+        : ''
+      const indexParams = buildPathAccessorIndexParams(field.path)
+      const usesConstantPath = indexParams.length === 0
+      const pathExpression = buildJsonPathExpression(field.path, indexParams)
+      const pathReference = usesConstantPath ? buildPathConstantName(field.path) : pathExpression
+      const getterParams = indexParams.map((param) => `int ${param.name}`).join(', ')
+      const setterParams = [...indexParams.map((param) => `int ${param.name}`), `${typeName} value`].join(', ')
+      const getterSignature = `${memberIndent}public ${typeName} ${getterName}(${getterParams}) {`
+      const setterSignature = `${memberIndent}public void set${methodSuffix}(${setterParams}) {`
+
+      if (usesConstantPath) {
+        imports.add('org.sjf4j.path.JsonPath')
+        pathConstantLines.push(`${memberIndent}private static final JsonPath ${pathReference} = JsonPath.parse(${buildJsonPathLiteral(field.path)});`)
+      }
+
+      const getterBody = usesConstantPath
+        ? renderJsonPathGetterBody(typeName, pathReference, indentLevel)
+        : renderPathGetterBody(typeName, pathExpression, indentLevel)
+      const setterBody = usesConstantPath
+        ? `${getIndent(indentLevel + 2)}${pathReference}.ensurePut(this, value);`
+        : `${getIndent(indentLevel + 2)}ensurePutByPath(${pathExpression}, value);`
+
+      return `${getterDoc}${getterSignature}\n${getterBody}\n${memberIndent}}\n\n${setterSignature}\n${setterBody}\n${memberIndent}}`
+    }).join('\n\n')
+
+    return {
+      supportTypes: '',
+      constants: pathConstantLines.join('\n'),
+      methods,
+    }
+  }
+
+  imports.add('org.sjf4j.annotation.path.CompiledPath')
+  imports.add('org.sjf4j.annotation.path.EnsurePutByPath')
+  imports.add('org.sjf4j.annotation.path.GetByPath')
+  imports.add('org.sjf4j.compiled.CompiledNodes')
+
+  const compiledPathInterfaceName = resolveCompiledPathInterfaceName(rootClassName, declaredTypeNames)
+  const interfaceMethods: string[] = []
+  const interfaceMemberIndent = getIndent(indentLevel + 2)
+
+  for (const field of fields) {
     const typeName = resolveTypeNameForPath(field.node, field.path, generatorOptions, imports, fieldOverrides)
+    const compiledGetterTypeName = resolveCompiledPathGetterType(rootSchema, field.path, typeName, generatorOptions, fieldOverrides)
+    if (compiledGetterTypeName === 'java.lang.Object') {
+      imports.add('org.sjf4j.node.Nodes')
+    }
     const methodSuffix = buildPathAccessorMethodName(field.path)
     const getterName = buildGetterMethodName(typeName, methodSuffix)
     const fieldJavaDocText = resolveJavaDocText(generatorOptions, field.node?.title, field.node?.description)
@@ -560,82 +879,33 @@ function renderPathAccessorBlock(
       ? `${memberIndent}/** ${escapeJavaDoc(fieldJavaDocText)} */\n`
       : ''
     const indexParams = buildPathAccessorIndexParams(field.path)
-    const usesConstantPath = indexParams.length === 0
-    const pathExpression = buildJsonPathExpression(field.path, indexParams)
-    const pathReference = usesConstantPath ? buildPathConstantName(field.path) : pathExpression
     const getterParams = indexParams.map((param) => `int ${param.name}`).join(', ')
     const setterParams = [...indexParams.map((param) => `int ${param.name}`), `${typeName} value`].join(', ')
     const getterSignature = `${memberIndent}public ${typeName} ${getterName}(${getterParams}) {`
     const setterSignature = `${memberIndent}public void set${methodSuffix}(${setterParams}) {`
+    const delegateArgs = ['this', ...indexParams.map((param) => param.name)].join(', ')
+    const getterCall = `PATH.${getterName}(${delegateArgs})`
+    const setterCall = `PATH.set${methodSuffix}(${['this', ...indexParams.map((param) => param.name), 'value'].join(', ')})`
+    const annotationPathLiteral = buildCompiledPathAnnotationLiteral(field.path, indexParams)
+    const interfaceGetterParams = [`${rootClassName} root`, ...indexParams.map((param) => `int ${param.name}`)].join(', ')
+    const interfaceSetterParams = [`${rootClassName} root`, ...indexParams.map((param) => `int ${param.name}`), `${typeName} value`].join(', ')
 
-    if (usesConstantPath) {
-      imports.add('org.sjf4j.path.JsonPath')
-      pathConstantLines.push(`${memberIndent}private static final JsonPath ${pathReference} = JsonPath.parse(${buildJsonPathLiteral(field.path)});`)
-    }
+    interfaceMethods.push(
+      `${interfaceMemberIndent}@GetByPath(${annotationPathLiteral})\n${interfaceMemberIndent}${compiledGetterTypeName} ${getterName}(${interfaceGetterParams});\n\n${interfaceMemberIndent}@EnsurePutByPath(${annotationPathLiteral})\n${interfaceMemberIndent}void set${methodSuffix}(${interfaceSetterParams});`,
+    )
 
-    const getterBody = usesConstantPath
-      ? renderCompiledPathGetterBody(typeName, pathReference, indentLevel)
-      : renderPathGetterBody(typeName, pathExpression, indentLevel)
-    const setterBody = usesConstantPath
-      ? `${getIndent(indentLevel + 2)}${pathReference}.ensurePut(this, value);`
-      : `${getIndent(indentLevel + 2)}ensurePutByPath(${pathExpression}, value);`
+    const getterBody = renderCompiledPathPublicGetterBody(typeName, compiledGetterTypeName, getterCall, indentLevel)
+    const setterBody = `${getIndent(indentLevel + 2)}${setterCall};`
 
-    return `${getterDoc}${getterSignature}\n${getterBody}\n${memberIndent}}\n\n${setterSignature}\n${setterBody}\n${memberIndent}}`
-  }).join('\n\n')
+    publicMethods.push(`${getterDoc}${getterSignature}\n${getterBody}\n${memberIndent}}\n\n${setterSignature}\n${setterBody}\n${memberIndent}}`)
+  }
+
+  const supportTypes = `${memberIndent}@CompiledPath\n${memberIndent}interface ${compiledPathInterfaceName} {\n${interfaceMethods.join('\n\n')}\n${memberIndent}}\n\n${memberIndent}private static final ${compiledPathInterfaceName} PATH = CompiledNodes.of(${compiledPathInterfaceName}.class);`
 
   return {
-    constants: pathConstantLines.join('\n'),
-    methods,
-  }
-}
-
-function renderCompiledPathGetterBody(typeName: string, pathReference: string, indentLevel: number): string {
-  const bodyIndent = getIndent(indentLevel + 2)
-
-  switch (typeName) {
-    case 'String':
-      return `${bodyIndent}return ${pathReference}.getString(this);`
-    case 'int':
-      return `${bodyIndent}return ${pathReference}.getInt(this, 0);`
-    case 'Integer':
-      return `${bodyIndent}return ${pathReference}.getInt(this);`
-    case 'long':
-      return `${bodyIndent}return ${pathReference}.getLong(this, 0L);`
-    case 'Long':
-      return `${bodyIndent}return ${pathReference}.getLong(this);`
-    case 'double':
-      return `${bodyIndent}return ${pathReference}.getDouble(this, 0d);`
-    case 'Double':
-      return `${bodyIndent}return ${pathReference}.getDouble(this);`
-    case 'boolean':
-      return `${bodyIndent}return ${pathReference}.getBoolean(this, false);`
-    case 'Boolean':
-      return `${bodyIndent}return ${pathReference}.getBoolean(this);`
-    case 'BigInteger':
-      return `${bodyIndent}return ${pathReference}.getBigInteger(this);`
-    case 'BigDecimal':
-      return `${bodyIndent}return ${pathReference}.getBigDecimal(this);`
-    case 'JsonObject':
-      return `${bodyIndent}return ${pathReference}.getJsonObject(this);`
-    case 'Map<String, Object>':
-      return `${bodyIndent}return ${pathReference}.getMap(this);`
-    case 'LocalDate':
-      return `${bodyIndent}return ${pathReference}.get(this, LocalDate.class);`
-    case 'LocalDateTime':
-      return `${bodyIndent}return ${pathReference}.get(this, LocalDateTime.class);`
-    case 'OffsetDateTime':
-      return `${bodyIndent}return ${pathReference}.get(this, OffsetDateTime.class);`
-    case 'Instant':
-      return `${bodyIndent}return ${pathReference}.get(this, Instant.class);`
-    default:
-      if (typeName.startsWith('List<')) {
-        const itemType = typeName.slice(5, -1)
-        if (!itemType.includes('<') && itemType !== 'Map<String, Object>') {
-          return `${bodyIndent}return ${pathReference}.getList(this, ${itemType}.class);`
-        }
-        return `${bodyIndent}return (${typeName}) ${pathReference}.getList(this);`
-      }
-      return `${bodyIndent}return ${pathReference}.get(this, ${typeName}.class);`
+    supportTypes,
+    constants: '',
+    methods: publicMethods.join('\n\n'),
   }
 }
 
@@ -711,7 +981,7 @@ function resolveFieldType(
 
   if (getDeclaredType(node) === 'array') {
     imports.add('java.util.List')
-    return `List<${resolveFieldType(node.items, `${fallbackName}Item`, generatorOptions, imports, nestedClassBlocks, fieldOverrides, `${propertyPath}/0`, indentLevel)}>`
+    return `List<${boxTypeForGenericElement(resolveFieldType(node.items, `${fallbackName}Item`, generatorOptions, imports, nestedClassBlocks, fieldOverrides, `${propertyPath}/0`, indentLevel))}>`
   }
 
   if (isStringEnumSchema(node) && generatorOptions.enumMapping === 'javaEnum') {
@@ -850,15 +1120,27 @@ function renderClass(
     indentLevel,
   )
 
-  const pathAccessorBlock = isRoot
-    ? renderPathAccessorBlock(schema, generatorOptions, imports, fieldOverrides, indentLevel)
-    : { constants: '', methods: '' }
-
   const hoistedPathOnlyEnumBlocks = isRoot && pathOnly
     ? collectHoistedPathOnlyEnumBlocks(schema, generatorOptions, fieldOverrides, indentLevel + 1)
     : []
 
-  const memberSections = [fieldMembers, fieldAccessorBlock, propertyAccessorBlock, pathAccessorBlock.constants, pathAccessorBlock.methods, nestedEnumBlocks.join('\n\n'), hoistedPathOnlyEnumBlocks.join('\n\n'), nestedClassBlocks.join('\n\n')]
+  const pathAccessorBlock = isRoot
+    ? renderPathAccessorBlock(
+        schema,
+        className,
+        generatorOptions,
+        imports,
+        fieldOverrides,
+        indentLevel,
+        collectDeclaredTypeNames([
+          ...nestedEnumBlocks,
+          ...hoistedPathOnlyEnumBlocks,
+          ...nestedClassBlocks,
+        ]),
+      )
+    : { supportTypes: '', constants: '', methods: '' }
+
+  const memberSections = [fieldMembers, fieldAccessorBlock, propertyAccessorBlock, pathAccessorBlock.supportTypes, pathAccessorBlock.constants, pathAccessorBlock.methods, nestedEnumBlocks.join('\n\n'), hoistedPathOnlyEnumBlocks.join('\n\n'), nestedClassBlocks.join('\n\n')]
     .filter(Boolean)
 
   if (memberSections.length === 0) {

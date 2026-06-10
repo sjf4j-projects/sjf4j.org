@@ -12,6 +12,7 @@ export type ObjectLeafMapping = 'jsonObject' | 'mapObject' | 'jojo'
 export type PathAccessMode = 'getterSetter' | 'pathGetterSetter'
 export type FieldStrategy = 'all' | 'required' | 'none'
 export type PathAccessorStrategy = 'all' | 'required' | 'none'
+export type PathStrategy = 'compiledPath' | 'jsonPath'
 export type FieldMemberKind = 'field' | 'property'
 
 export type FieldOverride = {
@@ -33,6 +34,7 @@ export type GeneratorOptions = {
   fieldStrategy: FieldStrategy
   accessorMode: AccessorMode
   pathAccessorStrategy: PathAccessorStrategy
+  pathStrategy: PathStrategy
   useValidation: boolean
   validationAnnotations: ValidationAnnotation[]
   validationNamespace: ValidationNamespace

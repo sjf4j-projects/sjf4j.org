@@ -29,7 +29,7 @@ flowchart LR
     YAML --> BIND
     PROP --> BIND
 
-    BIND --> OBNT(("OBNT <br/> Object-Based <br/> Node Tree"))
+    BIND --> OBNT(("Object-Based Node <br/> Tree (OBNT)"))
 
     OBNT --> ACCESSOR("Node Accessor")
     OBNT --> PATH("JSON Path")

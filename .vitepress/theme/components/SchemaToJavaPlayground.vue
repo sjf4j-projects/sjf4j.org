@@ -470,6 +470,14 @@ function downloadOutput() {
         </label>
 
         <label class="generator-field">
+          <span>Path strategy</span>
+          <select v-model="options.pathStrategy">
+            <option value="compiledPath">@CompiledPath</option>
+            <option value="jsonPath">JsonPath</option>
+          </select>
+        </label>
+
+        <label class="generator-field">
           <span>Object leaf mapping</span>
           <select v-model="options.objectLeafMapping">
             <option value="jsonObject">JsonObject</option>

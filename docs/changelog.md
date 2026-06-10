@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Added method-level `@MappingCreator` support for `@CompiledMapper` methods, allowing per-method target implementation or factory selection that overrides matching interface-level creators.
+
+### Fixed
+- Fixed generated `@CompiledPath` and `@CompiledMapper` static property resolution for `JsonObject` subclasses so JOJO getter/field/setter properties are generated like POJO access, while unknown names still fall back to dynamic `JsonObject` access.
+- Fixed generated mapper/path property discovery to share record, bean getter/setter, renamed-property, and JOJO type checks without treating ordinary fluent methods as properties.
+
+
+## [1.3.1] - 2026.06.09
 ### Breaking Changes
 - Renamed the optional compiled-path accelerator artifact from `sjf4j-bytecode` to `sjf4j-asm`; generated runtime APIs now live under `org.sjf4j.compiled`, while the ASM provider remains under `org.sjf4j.asm`.
 - Renamed path/node write helpers to make parent-missing and replace-all semantics explicit, including `putIfPresent` -> `putIfParentPresentByPath`, `remove` -> `removeIfPresent`, `replace` -> `replaceAll`, and `access*` -> read-specific `getAccess*` / write-specific `putAccess*` variants across `Nodes`, `FacadeNodes`, and native facades.

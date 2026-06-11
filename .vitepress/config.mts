@@ -297,6 +297,7 @@ export default withMermaid(defineConfig({
           { text: 'Getting Started', link: '/docs/getting_started' },
           { text: 'Architecture', link: '/docs/architecture' },
           { text: 'Benchmarks', link: '/docs/benchmarks' },
+          { text: 'Changelog', link: '/docs/changelog' },
         ],
       },
       {
@@ -305,7 +306,6 @@ export default withMermaid(defineConfig({
           { text: 'Modeling (OBNT)', link: '/docs/modeling' },
           { text: 'Binding (Multi-Format)', link: '/docs/binding' },
           { text: 'Navigating (JSON Path)', link: '/docs/navigating' },
-          { text: 'CompiledPath', link: '/docs/compiled-path' },
           { text: 'Patching (JSON Patch)', link: '/docs/patching' },
           { text: 'Validating (JSON Schema)', link: '/docs/validating' },
           { text: 'Mapping (Object-to-object', link: '/docs/mapping' }
@@ -315,8 +315,9 @@ export default withMermaid(defineConfig({
         text: 'Reference',
         items: [
           { text: 'Javadocs', link: 'https://javadoc.io/doc/org.sjf4j/sjf4j' },
+          { text: 'Creek Service', link: 'https://www.creekservice.org/json-schema-validation-comparison/' },
           { text: 'Bowtie', link: 'https://bowtie.report/#/implementations/java-sjf4j' },
-          { text: 'Changelog', link: '/docs/changelog' },
+          { text: 'Java Object Mapper Benchmark', link: 'https://github.com/arey/java-object-mapper-benchmark' },
           { text: 'FAQ', link: '/docs/faq' },
         ],
       },

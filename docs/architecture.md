@@ -36,8 +36,6 @@ This design keeps APIs consistent and avoids unnecessary conversions between dif
 
 Whether your data comes from Jackson, Gson, YAML, a `POJO`, or a simple `Map`, the same SJF4J APIs can work with it.
 
----
-
 ## How SJF4J Fits Into Your Stack
 
 SJF4J is not a replacement for your existing data model.

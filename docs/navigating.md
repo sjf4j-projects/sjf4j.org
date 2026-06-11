@@ -381,8 +381,8 @@ normalization, or aggregation.
 
 
 ## @CompiledPath 
-Every runtime path evaluation involves parsing, tokenization, navigation, and interpretation. 
-For occasional queries, that overhead is negligible. 
+Every runtime path evaluation involves parsing, tokenization, navigation, and interpretation.   
+For occasional queries, that overhead is negligible.   
 For hot paths executed millions of times, it becomes measurable.
 
 `@CompiledPath` eliminates that overhead entirely.
@@ -396,45 +396,13 @@ compiled accessors are often **several to dozens of times faster** than dynamic 
 ### Add `sjf4j-processor`
 
 Gradle:
-
 ```groovy
 dependencies {
     implementation("org.sjf4j:sjf4j:{version}")
     annotationProcessor("org.sjf4j:sjf4j-processor:{version}")
 }
 ```
-
-<details>
-<summary>Maven</summary>
-
-```xml
-<dependency>
-    <groupId>org.sjf4j</groupId>
-    <artifactId>sjf4j</artifactId>
-    <version>{version}</version>
-</dependency>
-
-<build>
-    <plugins>
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-compiler-plugin</artifactId>
-            <configuration>
-                <annotationProcessorPaths>
-                    <path>
-                        <groupId>org.sjf4j</groupId>
-                        <artifactId>sjf4j-processor</artifactId>
-                        <version>{version}</version>
-                    </path>
-                </annotationProcessorPaths>
-            </configuration>
-        </plugin>
-    </plugins>
-</build>
-```
-
-</details>
-
+See [Choose Your Setup](./architecture#sjf4j-processor) for Maven configuration.
 
 ### Method Rules
 A compiled path method is simply a Java method whose signature describes a JSONPath operation.

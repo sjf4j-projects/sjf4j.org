@@ -1,9 +1,3 @@
----
-
-title: "SJF4J Architecture"
-description: "Understand how SJF4J unifies parsing, navigation, patching, validation, and mapping around a single Java object graph model."
--------------------------------------------------------------------------------------------------------------------------------------------
-
 # Architecture
 
 ## One Model, Many Capabilities
@@ -89,8 +83,6 @@ For performance-critical workloads, this can eliminate much of the reflection
 and interpretation overhead typically associated with structural processing,
 often achieving performance close to hand-written code.
 
----
-
 ## Choose Your Setup
 
 Start with the core module and add capabilities as needed.
@@ -101,10 +93,11 @@ Start with the core module and add capabilities as needed.
 `sjf4j-asm`        ─┘
 ```
 
-### `sjf4j` - Core Runtime
+### `sjf4j`
 
 For object graph processing, binding, JSON Path, and JSON Patch.
 
+Gradle:
 ```kotlin
 implementation("org.sjf4j:sjf4j:{version}")
 ```
@@ -115,10 +108,11 @@ Provides:
 - `JsonPath` — RFC 9535-style path querying and mutation over OBNT object graphs.
 - `JsonPatch` — RFC 6902 JSON Patch operations for structural updates.
 
-### `sjf4j-schema` - JSON Schema Validation
+### `sjf4j-schema`
 
 Add JSON Schema support.
 
+Gradle:
 ```kotlin
 implementation("org.sjf4j:sjf4j-schema:{version}")
 ```
@@ -128,21 +122,44 @@ Provides:
 - `SchemaPlan` — validation execution plan derived from a schema document.
 - `SchemaRegistry` — reusable schema registry for resolving references and sharing compiled schemas.
 
-### `sjf4j-processor` - Compile-Time Generation
+### `sjf4j-processor`
 
 Generate high-performance path accessors and object mappers.
 
+Gradle:
 ```kotlin
 annotationProcessor("org.sjf4j:sjf4j-processor:{version}")
 ```
+
+Maven:
+```xml
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <configuration>
+                <annotationProcessorPaths>
+                    <path>
+                        <groupId>org.sjf4j</groupId>
+                        <artifactId>sjf4j-processor</artifactId>
+                        <version>{version}</version>
+                    </path>
+                </annotationProcessorPaths>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+```
+
 
 Provides:
 - `@CompiledPath` implementation — generates typed path accessors so hot path reads/writes avoid runtime parsing and reflection.
 - `@CompiledMapper` implementation — generates object-to-object mappers for projection and transformation workloads.
 
-### `sjf4j-asm` Runtime Bytecode Acceleration (Deprecated)
+### `sjf4j-asm`
 
-Optional runtime-generated path accessors.
+Optional runtime-generated path accessors. (Deprecated)
 
 | Module      | Purpose                       |
 | ----------- | ----------------------------- |

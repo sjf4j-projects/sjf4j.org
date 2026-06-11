@@ -305,6 +305,7 @@ export default withMermaid(defineConfig({
           { text: 'Modeling (OBNT)', link: '/docs/modeling' },
           { text: 'Binding (Multi-Format)', link: '/docs/binding' },
           { text: 'Navigating (JSON Path)', link: '/docs/navigating' },
+          { text: 'CompiledPath', link: '/docs/compiled-path' },
           { text: 'Patching (JSON Patch)', link: '/docs/patching' },
           { text: 'Validating (JSON Schema)', link: '/docs/validating' },
           { text: 'Mapping (Object-to-object', link: '/docs/mapping' }

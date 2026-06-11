@@ -19,6 +19,12 @@ Unlike MapStruct, it can also map directly across SJF4J's Object-Based Node Tree
 
 ## Quick Start
 
+Add `sjf4j-processor` (See [Choose Your Setup](./architecture#choose-your-setup) for Maven configuration).
+```groovy
+implementation("org.sjf4j:sjf4j:{version}")
+annotationProcessor("org.sjf4j:sjf4j-processor:{version}")
+```
+
 Declare a mapper interface:
 
 ```java

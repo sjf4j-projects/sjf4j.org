@@ -4,7 +4,7 @@ description: "Navigate, query, and update Java object graphs with RFC 9535 JsonP
 ---
 
 # Navigating
-SJF4J provides a unified, JSON-semantic path engine that works on all OBNT nodes.  
+SJF4J provides a unified, JSON-semantic path engine that works on all [OBNT](./modeling.md) nodes.  
 It supports two standardized path syntaxes:
 - [JSON Path (RFC 9535)](https://www.rfc-editor.org/rfc/rfc9535)
 - [JSON Pointer (RFC 6901)](https://www.rfc-editor.org/rfc/rfc6901)
@@ -257,6 +257,7 @@ Use filter expressions when you need to select nodes by value, comparison, or bo
 | `<`, `<=`, `>`, `>=`    | Numeric comparison             | `$.a[?@>3.5]`                      |
 | `&&`, `\|\|`, `!`, `()` | Logical operators and grouping | `$.o[?@>1 && !(@>4)]`              |
 | `=~`                    | Full regular expression match  | `$[?@.name =~ /^(alice)_\d{2}$/i]` |
+| `in`, `nin`             | Membership / not in array      | `$.items[?@.size in ['S','M']]`    |
 
 Example:
 ```java
@@ -265,7 +266,15 @@ List<String> cheapBooks = jo.findByPath("$..book[?(@.price < 10)].title", String
 JsonObject subNode = JsonPath.parse("$[?(@.name =~ /^B/)]").getJsonObject(jo);
 
 Integer cnt = jo.evalByPath("$.a[?@>3.5].count()", Integer.class);
+
+List<String> sizes = jo.findByPath("$.items[?@.size in ['S','M']].size", String.class);
+
+List<String> otherSizes = jo.findByPath("$.items[?@.size nin ['S','M']].size", String.class);
 ```
+
+`in` returns true when the left value equals any element of the right array using SJF4J JSON-semantic equality;
+`nin` is its negation. The right side may be an array literal such as `['S', 'M']` or a path that evaluates to an
+array/list, for example `$.items[?@.size in @.allowed]`.
 
 ### Built-in Functions  
 

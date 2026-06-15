@@ -23,7 +23,7 @@ flowchart LR
     YAML --> BIND
     PROP --> BIND
 
-    BIND --> OBNT(("Object-Based Node <br/> Tree (OBNT)"))
+    BIND --> OBNT(("Object-Based <br/> Node Tree"))
 
     OBNT --> ACCESSOR("Node Accessor")
     OBNT --> PATH("JSON Path")
@@ -32,37 +32,41 @@ flowchart LR
     OBNT --> MAPPER("Object Mapping")
 ```
 
-This design keeps APIs consistent and avoids unnecessary conversions between different tree models.
+This keeps the programming model consistent and avoids unnecessary conversions between different JSON tree representations.
 
-Whether your data comes from Jackson, Gson, YAML, a `POJO`, or a simple `Map`, the same SJF4J APIs can work with it.
+Whether your data comes from Jackson, Gson, YAML, a `POJO`, or a simple `Map`, SJF4J can process it through the same JSON-semantic model.
 
 ## How SJF4J Fits Into Your Stack
 
-SJF4J is not a replacement for your existing data model.
+SJF4J does not replace your existing data model.
 
-It works directly on the objects your application already uses and adds powerful capabilities on top of them.
+It works directly with the Java objects your application already uses:
+* POJOs and records
+* `Map` / `List`
+* arrays
+* `JsonObject` / `JsonArray`
+* JOJO / JAJO models
 
-Think of SJF4J as a **structural accelerator for Java object graphs**.
+Think of SJF4J as a **high-performance structural layer** for these Java object graphs.
 
 ```mermaid
 flowchart LR
 
-  APP("Your Application")
+    subgraph APP["Your Application"]
+        POJO["POJO / Record"]
+        MAP["Map / List / Set"]
+        JSONOBJ["JsonNode / JsonObject"]
+    end
+    
+    SJF4J("Accelerated 🚀 <br/> by SJF4J")
+    
+    POJO --> SJF4J
+    MAP --> SJF4J
+    JSONOBJ --> SJF4J
 
-  APP --> POJO["POJO / Record"]
-  APP --> MAP["Map / List"]
-  APP --> JSONOBJ["JsonObject / JsonArray"]
-
-  POJO --> SJF4J("SJF4J 🚀<br/> Accelerator")
-  MAP --> SJF4J
-  JSONOBJ --> SJF4J
-  
-  
 ```
 
-Rather than introducing another tree model, 
-SJF4J adds high-performance structural capabilities directly to the objects you already have.
-
+It adds JSON Path, JSON Patch, JSON Schema, and object mapping capabilities without introducing another tree model.
 
 ### Built for Complex Structures
 
@@ -86,29 +90,34 @@ often achieving performance close to hand-written code.
 Start with the core module and add capabilities as needed.
 
 ```text
-`sjf4j-schema`     ─┐
-`sjf4j-processor`  ─┼─► `sjf4j`
-`sjf4j-asm`        ─┘
+sjf4j-schema     ─┐
+sjf4j-processor  ─┼─► sjf4j
+sjf4j-asm        ─┘
 ```
 
 ### `sjf4j`
 
-For object graph processing, binding, JSON Path, and JSON Patch.
+Core runtime for object graph processing, binding, JSON Path, and JSON Patch.
 
 Gradle:
+
 ```kotlin
 implementation("org.sjf4j:sjf4j:{version}")
 ```
 
 Provides:
-- `Sjf4j` — main facade for binding, conversion, navigation, patching, and runtime configuration.
-- `Nodes` — low-level OBNT utilities for reading, writing, copying, and converting node-shaped Java objects.
-- `JsonPath` — RFC 9535-style path querying and mutation over OBNT object graphs.
-- `JsonPatch` — RFC 6902 JSON Patch operations for structural updates.
+- `Sjf4j`: Main facade for binding, conversion, navigation, patching, and runtime configuration.
+- `Nodes`: Low-level OBNT utilities for reading, writing, copying, and converting node-shaped Java objects.
+- `JsonObject/JsonArray`: Lightweight JSON-oriented object models that participate directly in the OBNT object graph.
+- `JsonPath`: RFC 9535-compliant path querying and mutation over OBNT object graphs.
+- `JsonPointer`: RFC 6901-compliant pointer-based navigation for exact node access.
+- `JsonPatch`: RFC 6902 JSON Patch operations for structural updates.
+
 
 ### `sjf4j-schema`
 
-Add JSON Schema support.
+JSON Schema validation for Java object graphs.
+
 
 Gradle:
 ```kotlin
@@ -116,13 +125,14 @@ implementation("org.sjf4j:sjf4j-schema:{version}")
 ```
 
 Provides:
-- `JsonSchema` — compiled schema entry point used to validate Java object graphs.
-- `SchemaPlan` — validation execution plan derived from a schema document.
-- `SchemaRegistry` — reusable schema registry for resolving references and sharing compiled schemas.
+- `JsonSchema`: compiled schema entry point used to validate Java object graphs.
+- `SchemaPlan`: validation execution plan derived from a schema document.
+- `SchemaRegistry`: reusable schema registry for resolving references and sharing compiled schemas.
+
 
 ### `sjf4j-processor`
 
-Generate high-performance path accessors and object mappers.
+Compile-time generation for high-performance path accessors and object mappers.
 
 Gradle:
 ```kotlin
@@ -150,25 +160,22 @@ Maven:
 </build>
 ```
 
-
 Provides:
-- `@CompiledPath` implementation — generates typed path accessors so hot path reads/writes avoid runtime parsing and reflection.
-- `@CompiledMapper` implementation — generates object-to-object mappers for projection and transformation workloads.
+-`@CompiledPath` — generates typed path accessors so hot-path reads and writes avoid runtime parsing and most reflection overhead.
+-`@CompiledMapper` — generates object-to-object mappers for projection and transformation workloads.
 
-### `sjf4j-asm`
 
-Optional runtime-generated path accessors. (Deprecated)
+### `sjf4j-asm` (Deprecated)
 
-| Module      | Purpose                       |
-| ----------- | ----------------------------- |
-| `sjf4j-asm` | Runtime bytecode acceleration |
+Runtime bytecode path compiler.
 
+Gradle:
 ```kotlin
 implementation("org.sjf4j:sjf4j-asm:{version}")
 ```
 
 Provides:
-- `AsmPathCompiler` — runtime bytecode path compiler; kept for compatibility, but compile-time generation is preferred.
+- `AsmPathCompiler`: runtime bytecode path compiler, kept for compatibility.
 
 
 ## Features

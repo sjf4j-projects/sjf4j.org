@@ -340,6 +340,9 @@ StudentDto studentDto = mapper.toDto(student);
 
 `@CompiledMapper` supports direct field mapping, JSON-style paths, computed fields, and nested mappings.
 
+And `@CompiledJdbcMapper` brings mapping to `java.sql.ResultSet`,
+compiling cursor-consuming results or an already-positioned current row (`ResultSet, int`) directly into POJOs or maps.
+
 Learn more → [Mapping (Object-to-object)](https://sjf4j.org/docs/mapping)
 
 ## Why Does This Work?

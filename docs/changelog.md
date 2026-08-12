@@ -8,13 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added compile-time `@CompiledJdbcMapper` generation under `org.sjf4j.annotation.mapper.jdbc` for direct `ResultSet` mapping to single targets, `List` results, and `Map<String, Object>` rows. POJO mappings use result columns by default and support `@Mapping` result column aliases, JDBC temporal conversions, explicit SQL-`NULL` handling.
+- Added JDBC-specific `@JdbcMapperOptions` and its result, column-projection, and duplicate-column policies under `org.sjf4j.annotation.mapper.jdbc`.
+- Added framework-neutral current-row JDBC mapper methods with the signature `T method(ResultSet, int)`. They map the already-positioned row without advancing or checking the cursor.
+- Added JMH-only H2, Spring, and MyBatis comparison benchmarks for compiled JDBC mapping; these external benchmark dependencies are not production runtime features.
+
 ### Breaking Changes
+- JDBC mapper options moved from `@MapperOptions` to `@JdbcMapperOptions`. Replace `jdbcResult = JdbcResultPolicy.FIRST` with `singleResult = SingleResultPolicy.FIRST`; use `columnProjection` and `duplicateColumn` with `ColumnProjectionPolicy` and `DuplicateColumnPolicy` from `org.sjf4j.annotation.mapper.jdbc`. The former `JdbcResultPolicy` and JDBC members of `@MapperOptions` were removed.
+- `Map<String, Object>` JDBC results now reject duplicate result columns by default. Set `duplicateColumn = DuplicateColumnPolicy.LAST_WINS` to retain the former last-value-wins behavior.
+- Removed Spring `RowMapper` and `ResultSetExtractor`-specific generated contracts. `@CompiledJdbcMapper` is now framework-neutral; use a directly declared `T method(ResultSet, int)` current-row method where needed.
 - `JsonPath.eval(...)` now returns a list for every non-function multi-match path, including zero or one match; unresolved single-value paths continue to return `null`.
 - Public `PathSegment.Slice` bounds and step fields, and its constructor parameters, now use `Long` instead of `Integer`.
 
 ### Changed
 - JSONPath filters now distinguish a missing singular value from JSON `null`; singular `@` paths use direct single-node lookup. Non-singular paths are rejected as direct comparison operands, but terminal functions may reduce multi-match input to a scalar for comparison; non-scalar function results are rejected.
 - JSONPath slices now support I-JSON exact-range bounds, clamped bounds, and negative-step ordering; unions retain source order and duplicates, including during descendant traversal. Quoted bracket selectors and quoted union members now reject trailing non-whitespace content.
+
+### Fixed
+- Aligned Draft 2020-12 format validation for IDN hostnames and emails, URI templates, and relative JSON Pointers with the official JSON Schema suite.
+- Fixed JSONPath quoted bracket selectors rejecting whitespace between the closing quote and bracket.
+- Fixed JSONPath descendant name, index, wildcard, and filter selectors to retain RFC 9535 child-before-descendant ordering.
 
 
 ## [1.3.2] - 2026.06.28

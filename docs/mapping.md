@@ -37,7 +37,7 @@ public interface UserMapper {
 Use the generated implementation:
 
 ```java
-UserMapper mapper = CompiledNodes.of(UserMapper.class);
+UserMapper mapper = CompiledNodes.instanceOf(UserMapper.class);
 
 UserDto dto = mapper.toDto(user);
 ```

@@ -447,7 +447,7 @@ interface UserPath {
 
 The generated implementation is obtained through:
 ```java
-UserPath path = CompiledNodes.of(UserPath.class);
+UserPath path = CompiledNodes.instanceOf(UserPath.class);
 
 // path.getName(user);
 // path.friendName(user, 3);

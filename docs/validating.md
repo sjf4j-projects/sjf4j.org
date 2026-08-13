@@ -8,13 +8,12 @@ description: "Validate Java object graphs directly with JSON Schema Draft 2020-1
 SJF4J validates Java object graphs directly through the OBNT model.
 Validation works over `Map`, `List`, POJO, JOJO, `JsonObject`, `JsonArray`, and other supported structured nodes without converting them into a separate JSON AST or re-serializing them first.
 
-The `sjf4j-schema` module supports:  
+The `sjf4j-schema` module supports JSON Schema `draft-2020-12`, `draft-2019-09` and `draft-07`.
 
-![Draft 2020-12](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fcompliance%2Fdraft2020-12.json)
+![Draft 2020-12](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fcompliance%2Fdraft2020-12.json)  
+![Draft 2019-09](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fcompliance%2Fdraft2019-09.json)  
+![Draft 7](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fcompliance%2Fdraft7.json)
 
-- [JSON Schema Draft 2020-12](https://json-schema.org/draft/2020-12) 
-- [JSON Schema Draft 2019-09](https://json-schema.org/draft/2019-09)
-- [JSON Schema Draft-07](https://json-schema.org/draft-07)
 
 SJF4J also publishes compliance data through
 [Creek Service](https://www.creekservice.org/json-schema-validation-comparison/)
@@ -129,7 +128,44 @@ ValidationResult full = plan.validate(node);
 ValidationResult failfast = plan.validate(node, true, false);
 ```
 
-### Choosing a Schema Draft
+## Specification Compatibility
+
+JSON Schema uses [ECMA-262](https://262.ecma-international.org/) regular
+expressions for `pattern` and `patternProperties`. Its `format` vocabulary
+draws on Internet standards such as [IDNA2008](https://www.rfc-editor.org/rfc/rfc5890)
+and [IRI](https://www.rfc-editor.org/rfc/rfc3987).
+
+SJF4J follows these conventions with the JDK runtime, and can use ICU4J for
+stricter internationalized-domain-name handling.
+
+### Optional ICU4J support
+
+By default, SJF4J relies on `java.net.IDN`.   
+For stricter internationalized-domain-name validation, add ICU4J:
+
+```kotlin
+runtimeOnly("com.ibm.icu:icu4j:77.1")
+```
+
+When present, ICU4J is detected at runtime and adds
+[UTS #46](https://unicode.org/reports/tr46/) IDNA Bidi and ContextJ checks for
+`idn-hostname`, `idn-email`, `iri`, and `iri-reference`.   
+The JDK fallback remains available, but can differ on internationalized-name edge cases.
+
+### Regular-expression semantics
+
+SJF4J compiles `pattern` and `patternProperties` once per `SchemaPlan` with
+Java's `Pattern`, then uses `Matcher.find()` to preserve JSON Schema's
+unanchored matching semantics. It normalizes common differences, including
+`\s`, `\S`, lower-case control escapes, and long-form Unicode properties.
+
+Java's regex engine is not a full ECMAScript implementation. Features such as
+`\u{...}` and Unicode-set syntax are unsupported, so portable schemas should
+stay within the shared ECMA-262/Java subset.   
+`format: "regex"` checks only whether Java can compile the expression.
+
+
+## Choosing a Schema Draft
 
 SJF4J detects the draft from the schema's `$schema` URI when present:
 
@@ -149,7 +185,8 @@ SchemaDialect.DRAFT_07
 ```
 
 If a schema does not declare `$schema`, the `SchemaRegistry` default dialect is used.
-The default registry dialect is `DRAFT_2020_12`.
+The default registry dialect is `DRAFT_2020_12`.  
+
 Use an explicit registry for legacy schemas that omit `$schema`:
 
 ```java

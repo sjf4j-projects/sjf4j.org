@@ -325,7 +325,7 @@ This benchmark compares SJF4J generated mappers with MapStruct and direct hand-w
 Source: [CompiledMapperBenchmark.java](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j-jdk17-test/src/jmh/java/org/sjf4j/jdk17/CompiledMapperBenchmark.java)
 
 ```text
-Benchmark                                      Mode  Cnt    Score     Error  Units
+Benchmark                                     Mode  Cnt    Score     Error  Units
 CompiledMapperBenchmark.flat_hand             avgt    5   10.724 ±   1.698  ns/op
 CompiledMapperBenchmark.flat_mapstruct        avgt    5   10.754 ±   0.555  ns/op
 CompiledMapperBenchmark.flat_sjf4j            avgt    5   11.296 ±   0.794  ns/op
@@ -347,3 +347,31 @@ CompiledMapperBenchmark.update_sjf4j          avgt    5   11.275 ±   0.436  ns/
 
 - `@CompiledMapper` performs at about the same speed as MapStruct and hand-written mapping in these benchmarks.
 - [Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark): SJF4J performs competitively with the fastest Java object mappers.
+
+## JDBC ResultSet Mapping Benchmark
+
+This benchmark maps a 1,000-row H2 `ResultSet` to `User` objects or maps.   
+SQL execution runs during JMH setup, so the timed work is limited to result-set
+traversal and conversion. It does not measure database, network, or connection-pool
+costs.
+
+Source: [CompiledJdbcMapperBenchmark.java](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j-jdk17-test/src/jmh/java/org/sjf4j/jdk17/CompiledJdbcMapperBenchmark.java)
+
+```text
+Benchmark                                       Mode  Cnt  Score   Error  Units
+users_handwritten_by_index                      avgt   10  0.034 ± 0.009  ms/op
+users_handwritten_by_label                      avgt   10  0.047 ± 0.003  ms/op
+users_mybatis_DefaultResultSetHandler_auto      avgt   10  0.299 ± 0.006  ms/op
+users_mybatis_DefaultResultSetHandler_explicit  avgt   10  0.411 ± 0.008  ms/op
+users_spring_BeanPropertyRowMapper              avgt   10  0.406 ± 0.003  ms/op
+users_sjf4j                                     avgt   10  0.026 ± 0.001  ms/op
+
+maps_handwritten                                avgt   10  0.074 ± 0.003  ms/op
+maps_sjf4j                                      avgt   10  0.072 ± 0.016  ms/op
+```
+
+**Summary**:
+
+- The generated SJF4J mapper is close to hand-written mapping for both maps and JavaBeans.
+- For `User` mapping, SJF4J is about `15x` faster than the measured MyBatis paths and Spring's `BeanPropertyRowMapper`.
+

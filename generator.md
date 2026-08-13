@@ -117,7 +117,7 @@ pageClass: generator-page
   - path accessors without index parameters use pre-parsed `static final JsonPath` constants via `JsonPath.parse(...)` on the root class
   - path accessors with one or more index parameters use `JsonObject` `*ByPath` APIs and `ensurePutByPath(path, value)` directly
 - In `compiledPath` mode:
-  - root path accessors use a root-scoped `@CompiledPath` interface named after the root class, such as `OrderPath`, plus a single `private static final ... PATH = CompiledNodes.of(...);`
+  - root path accessors use a root-scoped `@CompiledPath` interface named after the root class, such as `OrderPath`, plus a single `private static final ... PATH = CompiledNodes.instanceOf(...);`
   - generated interface methods are annotated with `@GetByPath` and `@EnsurePutByPath`
   - array index placeholders are encoded in annotation expressions as named placeholders such as `$.items[{itemsIndex}].sku`
   - public path getter/setter methods delegate through `PATH.method(this, ...)`

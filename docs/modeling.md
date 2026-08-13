@@ -18,7 +18,7 @@ OBNT uses **plain Java objects as nodes**. Any node in the tree is one of:
 
 ```mermaid
 graph BT
-  node(("Object <br/> Based Node Tree"))
+  node(("Object-Based <br/> Node Tree"))
   node --> object(("JSON Object <br/> { }"))
     object ---> map("*Map")
     object --> jo("JsonObject")

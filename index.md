@@ -24,7 +24,7 @@ SJF4J requires `JDK 8+` and has no external dependencies (except for the chosen 
 
 <MavenInstallSnippet />
 
-## Features
+## Capabilities
 
 <div class="feature-grid">
   <div class="feature-card">

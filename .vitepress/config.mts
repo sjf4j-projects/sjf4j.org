@@ -301,14 +301,14 @@ export default withMermaid(defineConfig({
         ],
       },
       {
-        text: 'Features',
+        text: 'Capabilities',
         items: [
           { text: 'Modeling (OBNT)', link: '/docs/modeling' },
           { text: 'Binding (Multi-Format)', link: '/docs/binding' },
           { text: 'Navigating (JSON Path)', link: '/docs/navigating' },
           { text: 'Patching (JSON Patch)', link: '/docs/patching' },
           { text: 'Validating (JSON Schema)', link: '/docs/validating' },
-          { text: 'Mapping (Object-to-object', link: '/docs/mapping' }
+          { text: 'Mapping (Object-to-obj)', link: '/docs/mapping' }
         ],
       },
       {

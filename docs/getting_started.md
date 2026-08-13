@@ -3,11 +3,11 @@
 ![License](https://img.shields.io/github/license/sjf4j-projects/sjf4j)
 [![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j)
 [![javadoc](https://javadoc.io/badge2/org.sjf4j/sjf4j/javadoc.svg)](https://javadoc.io/doc/org.sjf4j/sjf4j)
-![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fsupported_versions.json)
+![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fsupported_versions.json)
 ![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)  
-![Draft 2020-12](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fcompliance%2Fdraft2020-12.json)
-![Draft 2019-09](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fcompliance%2Fdraft2019-09.json)
-![Draft 7](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fcompliance%2Fdraft7.json)    
+![Draft 2020-12](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fcompliance%2Fdraft2020-12.json)
+![Draft 2019-09](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fcompliance%2Fdraft2019-09.json)
+![Draft 7](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fcompliance%2Fdraft7.json)    
 ![Build](https://img.shields.io/github/actions/workflow/status/sjf4j-projects/sjf4j/gradle.yml?branch=main)
 [![codecov](https://codecov.io/gh/sjf4j-projects/sjf4j/graph/badge.svg?branch=main)](https://codecov.io/gh/sjf4j-projects/sjf4j)
 
@@ -70,7 +70,6 @@ and can also be configured explicitly when needed.
 
 - **In-Memory** 
   - Built-in support.
-  - Provides the same JSON-semantic APIs on in-memory object graphs via OBNT. 
   - Useful even without external data sources (e.g., DB result mapping, complex nested data processing).
 
 Common runtime dependencies (pick as needed):
@@ -255,7 +254,10 @@ Learn more → [Patching (JSON Patch)](https://sjf4j.org/docs/patching)
 
 #### Validating
 
-Validate Java object graphs with JSON Schema Draft 2020-12.
+SJF4J fully supports JSON Schema Draft `2020-12`, `2019-09`, and `draft-07`,
+and can validate Java object graphs directly without first converting them into a dedicated JSON tree.
+
+Example:
 ```java
 JsonSchema schema = JsonSchema.fromJson("""
 {
@@ -310,9 +312,8 @@ public class Student {
 }
 ```
 
-SJF4J fully supports JSON Schema Draft 2020-12, 2019-09, and draft-07, 
-and can validate Java object graphs directly without first converting them into a dedicated JSON tree.
-
+Need Java models from a schema?  
+You can also use the online [Schema-to-Java Generator](https://sjf4j.org/generator) to generate Java models directly from JSON Schema.
 
 Learn more → [Validating (JSON Schema)](https://sjf4j.org/docs/validating)
 
@@ -339,7 +340,10 @@ StudentDto studentDto = mapper.toDto(student);
 
 `@CompiledMapper` supports direct field mapping, JSON-style paths, computed fields, and nested mappings.
 
-Learn more → [`Mapping` (Object-to-object)](https://sjf4j.org/docs/mapping)
+And `@CompiledJdbcMapper` brings mapping to `java.sql.ResultSet`,
+compiling cursor-consuming results or an already-positioned current row (`ResultSet, int`) directly into POJOs or maps.
+
+Learn more → [Mapping (Object-to-object)](https://sjf4j.org/docs/mapping)
 
 ## Why Does This Work?
 
@@ -349,7 +353,7 @@ SJF4J is built around a unified structural model called the **Object-Based Node 
 - All APIs operate directly on those objects.
 - All APIs follow or extend standard JSON semantics.
 
-As a result, SJF4J can apply JSON-style operations directly to your existing Java object graph 
+As a result, SJF4J can apply JSON-semantic operations directly to your existing Java object graph 
 without first converting it into a dedicated JSON tree.
 
 Learn more → [Architecture](https://sjf4j.org/docs/architecture)

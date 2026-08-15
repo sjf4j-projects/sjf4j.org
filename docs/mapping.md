@@ -748,6 +748,149 @@ Notes:
 - `PUT_IF_ABSENT` skips conversion for existing non-null target entries
 - null handling is applied before container update policy
 
+## JDBC ResultSet Mapping with `@CompiledJdbcMapper`
+
+Use `@CompiledJdbcMapper` when a mapper should read JDBC columns directly from a
+`ResultSet`. It is separate from `@CompiledMapper`: the generated code does not
+map a source object or node tree.
+
+The annotation processor from the [Quick Start](#quick-start) setup is also the
+prerequisite for JDBC mappers. Declare an interface and obtain its generated
+implementation through `CompiledNodes`:
+
+```java
+@CompiledJdbcMapper
+interface UserRows {
+    @Mapping(target = "name", source = "full_name")
+    User user(ResultSet rs);
+}
+
+UserRows rows = CompiledNodes.instanceOf(UserRows.class);
+User user = rows.user(resultSet);
+```
+
+By default, a target property reads the result column with the same name.
+Use `@Mapping(source = "...")` to use a SQL column alias, as in
+`full_name -> name` above.
+
+### ResultSet Cursor and Result Cardinality
+
+A one-argument method accepts a `ResultSet` positioned before its first row.
+The generated mapper advances the cursor but does not close the result set,
+statement, or connection.
+
+- A single-target method returns `null` when there are no rows. By default, it
+  throws `BindingException` if a second row exists.
+- `@JdbcMapperOptions(singleResult = SingleResultPolicy.FIRST)` returns the
+  first row without checking for another row.
+- A `List<T>` method consumes all remaining rows and returns an empty list when
+  none are available.
+
+For APIs that already position the cursor, such as a JDBC row-mapper callback,
+declare `ResultSet, int` instead:
+
+```java
+@CompiledJdbcMapper
+interface UserRow {
+    User mapRow(ResultSet rs, int rowNum);
+}
+```
+
+This form maps only the current row. It does not advance the cursor or perform
+a cardinality check; the `int` row number is not used during mapping.
+
+### Use with Spring JDBC
+
+Spring JDBC already manages the `ResultSet` cursor when it invokes a
+`RowMapper`. Define the JDBC mapper with the `ResultSet, int` signature and
+pass its generated method to `JdbcTemplate`. This keeps SQL execution in the
+repository and column-to-object conversion in the generated mapper.
+
+```java
+@CompiledJdbcMapper
+interface UserJdbcMapper {
+    @Mapping(target = "name", source = "full_name")
+    User mapRow(ResultSet rs, int rowNum);
+}
+
+@Configuration
+class JdbcMapperConfiguration {
+    @Bean
+    UserJdbcMapper userJdbcMapper() {
+        return CompiledNodes.instanceOf(UserJdbcMapper.class);
+    }
+}
+
+@Repository
+class UserRepository {
+    private final JdbcTemplate jdbcTemplate;
+    private final UserJdbcMapper userJdbcMapper;
+
+    UserRepository(JdbcTemplate jdbcTemplate, UserJdbcMapper userJdbcMapper) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.userJdbcMapper = userJdbcMapper;
+    }
+
+    List<User> findActive() {
+        return jdbcTemplate.query(
+                "select id, full_name from users where active = ?",
+                userJdbcMapper::mapRow,
+                true);
+    }
+}
+```
+
+Do not call a one-argument mapper method from a Spring `RowMapper` callback:
+Spring has already positioned the cursor on the current row. Let `JdbcTemplate`
+own result-set lifecycle and query cardinality handling; the generated mapper
+only reads the current row.
+
+### Supported Results and Options
+
+Abstract mapper methods must return a supported target and have either
+`ResultSet` or `ResultSet, int` parameters. Supported direct row targets are
+mutable POJOs, JOJOs, records, single-constructor targets,
+`@MappingCreator`-selected implementations, and `Map<String, Object>`.
+One-argument methods may instead return `List<T>` for one of those row targets;
+current-row methods do not support `List` results.
+
+```java
+@CompiledJdbcMapper
+interface Users {
+    List<User> users(ResultSet rs);
+
+    Map<String, Object> row(ResultSet rs);
+
+    List<Map<String, Object>> rows(ResultSet rs);
+}
+```
+
+Map results use result-column labels as keys. If labels are duplicated, the last
+column value replaces the earlier value.
+
+`@JdbcMapperOptions` configures an individual method. In addition to
+`singleResult`, `columnProjection` controls POJO and JOJO column requirements:
+
+```java
+@JdbcMapperOptions(columnProjection = ColumnProjectionPolicy.PRESENT_ONLY)
+User partialUser(ResultSet rs);
+```
+
+The default, `REQUIRE_ALL`, requires every declared POJO or JOJO property
+column. `PRESENT_ONLY` maps columns that are present and leaves absent mutable
+properties at their initialized values. It is not available for map results or
+constructor-based targets.
+
+### Boundaries and Errors
+
+JDBC mappers provide direct, flat column mapping. They do not support update
+methods, nested JDBC source paths, nested mapping, or arbitrary collection
+targets. `@Mapping` target paths are supported for mutable POJOs only when all
+intermediate target parents already exist; they are not created.
+
+SQL exceptions are wrapped in `BindingException`. A SQL `NULL` mapped to a
+primitive target also produces `BindingException`.
+
 ## Compared with MapStruct
 
 Both frameworks provide:

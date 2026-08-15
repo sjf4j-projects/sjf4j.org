@@ -43,7 +43,7 @@ SJF4J requires `JDK 8+` and has no external dependencies (except for the chosen 
     <a href="/docs/navigating">Learn more</a>
   </div>
   <div class="feature-card">
-    <h3>🔧 Patching (JSON Patch / Merge Patch)</h3>
+    <h3>🔧 Patching (JSON Patch)</h3>
     <p>Applies in-place structural updates with JSON Patch, JSON Merge Patch, and indexed merge.</p>
     <a href="/docs/patching">Learn more</a>
   </div>
@@ -53,7 +53,7 @@ SJF4J requires `JDK 8+` and has no external dependencies (except for the chosen 
     <a href="/docs/validating">Learn more</a>
   </div>
   <div class="feature-card">
-    <h3>🔀 Mapping (Transformation)</h3>
+    <h3>🔀 Mapping (Object-to-object)</h3>
     <p>Maps and transforms object graphs for reshaping, projection, and DTO conversion.</p>
     <a href="/docs/mapping">Learn more</a>
   </div>

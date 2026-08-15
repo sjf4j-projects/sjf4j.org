@@ -37,20 +37,6 @@ const theme: Theme = {
           h(
             'a',
             {
-              href: 'https://bowtie.report/#/implementations/java-sjf4j',
-              target: '_blank',
-              rel: 'noreferrer',
-            },
-            [
-              h('img', {
-                alt: 'Supported Dialects',
-                src: 'https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fsupported_versions.json',
-              }),
-            ]
-          ),
-          h(
-            'a',
-            {
               href: 'https://search.maven.org/artifact/org.sjf4j/sjf4j',
               target: '_blank',
               rel: 'noreferrer',
@@ -73,6 +59,20 @@ const theme: Theme = {
               h('img', {
                 alt: 'javadoc',
                 src: 'https://javadoc.io/badge2/org.sjf4j/sjf4j/javadoc.svg',
+              }),
+            ]
+          ),
+          h(
+            'a',
+            {
+              href: 'https://bowtie.report/#/implementations/java-sjf4j',
+              target: '_blank',
+              rel: 'noreferrer',
+            },
+            [
+              h('img', {
+                alt: 'Supported Dialects',
+                src: 'https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fsupported_versions.json',
               }),
             ]
           ),

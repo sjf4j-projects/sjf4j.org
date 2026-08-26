@@ -97,7 +97,6 @@ implementation("org.yaml:snakeyaml:{snakeyaml-version}")
 ```
 </details>
 
----
 
 <details>
 <summary><strong>Optional: Add feature modules and annotation processing</strong></summary>
@@ -168,7 +167,7 @@ JsonObject jo = JsonObject.fromJson("""
 `JsonObject` gives you typed value access together with JSON Path based navigation and mutation.
 ```java
 String name = jo.getString("name");
-int math = jo.getIntByPath("$.scores.math");
+int math = jo.getJsonObject("scores").getInt("math");
 
 jo.putByPath("$.scores.math", 90);
 System.out.println(jo.toJson());
@@ -251,7 +250,7 @@ Java object graphs without first converting them into an intermediate JSON tree.
 ---
 
 A regular POJO provides a typed, closed object model, 
-while a **JOJO (JSON-Oriented Java Object)** extends it with dynamic properties:
+while a **JOJO (JSON-Object Java Object)** extends it with dynamic properties:
 ```java
 public class StudentJojo extends JsonObject { 
     private String name; 
@@ -308,8 +307,8 @@ studentJojo.getIntByPath("$.scores.math");
 ```
 
 For performance-critical paths, `@CompiledPath` generates direct access code at compile time,
-approaching hand-written access performance:
-This requires the `sjf4j-processor` annotation processor; see the setup instructions above.
+approaching hand-written access performance:  
+(This requires the `sjf4j-processor` annotation processor)
 ```java
 @CompiledPath
 interface StudentPath {

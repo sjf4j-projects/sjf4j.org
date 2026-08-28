@@ -10,12 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 - JSONPath parser whitespace now follows RFC 9535 exactly where whitespace is syntactically recognized (bracket selectors, filter grammar, and function-argument separators): only SP, HTAB, LF, and CR are accepted. Extended dot-name syntax and JSON Pointer semantics are unchanged.
+- Moved runtime metadata classes from `NodeRegistry` to top-level `org.sjf4j.node` types. `NodeRegistry.PojoInfo` is renamed to `ObjectInfo`; `TypeInfo`, `PropertyInfo`, `CreatorInfo`, `ContainerInfo`, `ValueCodecInfo`, `OneOfInfo`, and `RecordInfo` are now imported directly from `org.sjf4j.node`.
+- Made built-in JSON, YAML, and node facade implementations final; applications must use composition rather than subclassing these types.
 
 ### Added
 - Added `@CompiledMapper` source support for Jackson 2/3 and Gson native JSON nodes, including object, array, typed-map, indexed-path, nested-object, and explicit native-node converter mappings.
+- Added a protected `JsonObject(ObjectInfo)` constructor for JOJOs that precompute metadata and pass it to `super(...)` on performance-sensitive construction paths.
+- Added conditional null/container-end probes and primitive-value fast paths to `StreamingReader` and its built-in backend readers.
 
 ### Changed
 - Optimized JSON Pointer and JSONPath syntax parsing to reduce temporary allocations for common selectors, slices, and unions.
+
+### Fixed
+- Fixed Jackson 2 exclusive reads to close their parsers while leaving caller-provided readers and input streams open.
 
 
 

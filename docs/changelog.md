@@ -9,20 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
+- Removed capacity-aware `TypeRegistry` map, list, and set container factory overloads.
+- Moved compiled mapping annotations (including JDBC annotations) to `org.sjf4j.annotation.mapping`, compiled path annotations to `org.sjf4j.annotation.path`, and their processor generators to `org.sjf4j.processor.mapping` and `org.sjf4j.processor.path`.
 - JSONPath parser whitespace now follows RFC 9535 exactly where whitespace is syntactically recognized (bracket selectors, filter grammar, and function-argument separators): only SP, HTAB, LF, and CR are accepted. Extended dot-name syntax and JSON Pointer semantics are unchanged.
-- Moved runtime metadata classes from `NodeRegistry` to top-level `org.sjf4j.node` types. `NodeRegistry.PojoInfo` is renamed to `ObjectInfo`; `TypeInfo`, `PropertyInfo`, `CreatorInfo`, `ContainerInfo`, `ValueCodecInfo`, `OneOfInfo`, and `RecordInfo` are now imported directly from `org.sjf4j.node`.
-- Made built-in JSON, YAML, and node facade implementations final; applications must use composition rather than subclassing these types.
+- Renamed `@MapperOptions` to `@MappingOptions`.
+- Renamed `CompiledNodes.instanceOf()` to `CompiledInstances.of()` and moved it from `org.sjf4j.compiled` to `org.sjf4j`.
+- Renamed `@CompiledPath` to `@CompiledNavigator`.
+- Renamed `@JdbcMapperOptions` to `@JdbcMappingOptions`.
+- Moved `Nodes`, `NodeStream`, `NodeKind`, and `TypeReference` from `org.sjf4j.node` to `org.sjf4j`.
 
 ### Added
+- Added JSON, YAML, and node binding interfaces plus a reusable `StringBuilderWriter`.
+- Added built-in `SimpleJsonBinding` and `SimplePropertiesBinding` implementations for JSON streaming and flattened `Properties` nodes.
+- Added `SimpleYamlBinding`, which reports a clear unsupported-operation error when SnakeYAML is unavailable.
 - Added `@CompiledMapper` source support for Jackson 2/3 and Gson native JSON nodes, including object, array, typed-map, indexed-path, nested-object, and explicit native-node converter mappings.
 - Added a protected `JsonObject(ObjectInfo)` constructor for JOJOs that precompute metadata and pass it to `super(...)` on performance-sensitive construction paths.
 - Added conditional null/container-end probes and primitive-value fast paths to `StreamingReader` and its built-in backend readers.
 
 ### Changed
+- Renamed the internal Java 17 test and benchmark Gradle module from `sjf4j-jdk17-test` to `sjf4j-testbench`; its test-source packages now use `org.sjf4j.testbench`.
+- Moved JMH-only handwritten JSON read/write benchmarks into `sjf4j-testbench` and enabled Lombok annotation processing for that source set.
+- Optimized the built-in JSON reader with buffered input and allocation-conscious primitive number parsing.
 - Optimized JSON Pointer and JSONPath syntax parsing to reduce temporary allocations for common selectors, slices, and unions.
-- `StreamingReader.endDocument()` now verifies that the root value was consumed and no trailing input remains; built-in readers also report object member names as `FIELD_NAME` and reject non-values in `skipNext()`.
+- `StreamingReader.endDocument()` now verifies that the root value was consumed and no trailing input remains.
+- Improved generated `@CompiledMapper` mappings from `JsonObject` with direct scalar and nested-container access, including dynamic Map-backed children and primitive defaults for missing or null values.
 
 ### Fixed
+- Fixed URL value decoding to accept URI-compliant URLs before converting them to `URL` values.
 - Fixed Jackson 2 exclusive reads to close their parsers while leaving caller-provided readers and input streams open.
 - Fixed simple JSON parsing and JSON Schema `contentMediaType: application/json` validation to reject malformed delimiters, literals, numbers, escapes, surrogate pairs, trailing content, and invalid base64-decoded UTF-8.
 - Fixed Jackson 3 discriminator-based `OneOf` binding to preserve the parser cursor for following object properties.

@@ -9,36 +9,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
-- Removed capacity-aware `TypeRegistry` map, list, and set container factory overloads.
+- Moved node binding annotations from `org.sjf4j.annotation.binding` to `org.sjf4j.annotation.node` and renamed `@NodeBinding` to `@NodeObject`.
+- Moved `ValueCodec`, `ValueInfo`, `ValueRegistry`, and `PatternedValueCodec` from `org.sjf4j.node` to `org.sjf4j.value`; update imports and public metadata references accordingly.
+- Renamed `ValueCodec` and `ValueCodecInfo` to `ValueCodec` and `ValueInfo`; update codec imports and public metadata references accordingly.
+- Renamed `ExternalNode.rootType()` to `nodeType()` and removed `ExternalNodeRegistry.init()`; external-node providers are now loaded during registry class initialization.
+- Converted `JsonBinder`, `YamlBinder`, `StreamingBinder`, and `StreamingWriter` from interfaces to abstract classes; custom backends must extend the new base classes and pass their binder/context through constructors.
+- Replaced `StreamingWriter.PropertyName` with `PreparedName`; custom backends must implement prepared-name writing with the new type.
+- Replaced manual `ExternalNodeRegistry.register(...)` registration with `ServiceLoader`-discovered `ExternalNodeProvider` implementations; external node integrations must publish a service provider.
+- Added `nextCharValue()` to `StreamingReader` and `writeCharValue(char)` to `StreamingWriter`; custom streaming backend implementations must implement these methods.
+- Renamed `org.sjf4j.binding.FieldReader` to `FieldReader`; update streaming binding references accordingly.
+- Renamed `org.sjf4j.node.PropertyInfo` to `FieldInfo`; update imports and public metadata references accordingly.
+- Renamed `org.sjf4j.node.ObjectInfo` to `PojoInfo`; update imports and public metadata references accordingly.
+- Renamed `JsonArray.elementType()` to `elementClass()`; update typed `JsonArray` subclasses accordingly.
+- Renamed the core Gradle module and published artifact from `sjf4j` to `sjf4j-core`; update project dependencies accordingly.
+- Replaced `TypeRegistry` map, list, and set container factory overloads accepting `(Class, boolean)` with capacity-aware `(Class, int, boolean)` overloads.
 - Moved compiled mapping annotations (including JDBC annotations) to `org.sjf4j.annotation.mapping`, compiled path annotations to `org.sjf4j.annotation.path`, and their processor generators to `org.sjf4j.processor.mapping` and `org.sjf4j.processor.path`.
 - JSONPath parser whitespace now follows RFC 9535 exactly where whitespace is syntactically recognized (bracket selectors, filter grammar, and function-argument separators): only SP, HTAB, LF, and CR are accepted. Extended dot-name syntax and JSON Pointer semantics are unchanged.
 - Renamed `@MapperOptions` to `@MappingOptions`.
 - Renamed `CompiledNodes.instanceOf()` to `CompiledInstances.of()` and moved it from `org.sjf4j.compiled` to `org.sjf4j`.
 - Renamed `@CompiledPath` to `@CompiledNavigator`.
 - Renamed `@JdbcMapperOptions` to `@JdbcMappingOptions`.
+- Renamed JSON, YAML, node, properties, and streaming binding APIs from `*Binding` to `*Binder`, including the built-in simple implementations.
 - Moved `Nodes`, `NodeStream`, `NodeKind`, and `TypeReference` from `org.sjf4j.node` to `org.sjf4j`.
+- Moved runtime bytecode-path APIs (`BytecodePath`, `FallbackBytecodePath`, `PathCompiler`, and `BytecodeCompilers`) from `org.sjf4j.compiled` to `org.sjf4j.bytecode`, including the `PathCompiler` service-provider contract.
+- Renamed `org.sjf4j.util.StringBuilderWriter` to `org.sjf4j.binding.FastStringWriter`.
+- Removed the deprecated runtime mapper public APIs (`org.sjf4j.mapper.NodeMapper`, `NodeMapperBuilder`, and `Sjf4j.nodeMapperBuilder(...)`) from the published `sjf4j-core` artifact. Use annotation mapping with `@CompiledMapper` instead; the previous implementation remains incubator-only.
+- Renamed the Gson integration module and artifact from `sjf4j-integration-gson` to `sjf4j-backend-gson`, and moved its public classes to `org.sjf4j.backend.gson` packages.
 
 ### Added
-- Added JSON, YAML, and node binding interfaces plus a reusable `StringBuilderWriter`.
-- Added built-in `SimpleJsonBinding` and `SimplePropertiesBinding` implementations for JSON streaming and flattened `Properties` nodes.
-- Added `SimpleYamlBinding`, which reports a clear unsupported-operation error when SnakeYAML is unavailable.
+- Added the `@CompiledBinder` annotation marker.
+- Added the `sjf4j-backend-fastjson2` artifact with Fastjson2 streaming reader and writer bindings.
+- Added the `sjf4j-backend-jackson2` artifact with Jackson 2 streaming reader and writer bindings.
+- Added structural traversal and access operations to `ExternalNode` and built-in ServiceLoader discovery for Gson native nodes.
+- Added setup-time `ExternalNode` classifiers for integrating external JSON node models with `NodeKind` and `JsonType` detection.
+- Added the `sjf4j` aggregate artifact, which transitively includes `sjf4j-core` and `sjf4j-schema`.
+- Added JSON, YAML, and node binding interfaces plus a reusable `FastStringReader`.
+- Added the `sjf4j-backend-gson` artifact with Gson streaming reader and writer bindings.
+- Added domain-specific mapping, node, patch, and path exception types.
 - Added `@CompiledMapper` source support for Jackson 2/3 and Gson native JSON nodes, including object, array, typed-map, indexed-path, nested-object, and explicit native-node converter mappings.
-- Added a protected `JsonObject(ObjectInfo)` constructor for JOJOs that precompute metadata and pass it to `super(...)` on performance-sensitive construction paths.
+- Added a protected `JsonObject(PojoInfo)` constructor for JOJOs that precompute metadata and pass it to `super(...)` on performance-sensitive construction paths.
 - Added conditional null/container-end probes and primitive-value fast paths to `StreamingReader` and its built-in backend readers.
+- Added a built-in `Charset` value codec.
 
 ### Changed
-- Renamed the internal Java 17 test and benchmark Gradle module from `sjf4j-jdk17-test` to `sjf4j-testbench`; its test-source packages now use `org.sjf4j.testbench`.
-- Moved JMH-only handwritten JSON read/write benchmarks into `sjf4j-testbench` and enabled Lombok annotation processing for that source set.
+- Refactored the NodeValue module.
+- Renamed public node-value metadata members from `hasValueCodecs()`/`valueCodec` to `isNodeValue()`/`codec` and streamlined shared streaming serialization dispatch.
+- Optimized streaming POJO serialization with backend-prepared field names and specialized scalar field writers.
+- Improved simple node binder conversion with creator-state handling, value-codec deep copies, read-only property skipping, and capacity-aware standard collection targets.
+- Optimized streaming POJO binding and writing with precomputed specialized field accessors.
+- Gson streaming binders now create configured writers and honor the `StreamingContext` null-serialization policy.
+- Renamed the internal Java 17 test and benchmark Gradle module from `sjf4j-jdk17-test` to `sjf4j-testbench`.
 - Optimized the built-in JSON reader with buffered input and allocation-conscious primitive number parsing.
 - Optimized JSON Pointer and JSONPath syntax parsing to reduce temporary allocations for common selectors, slices, and unions.
 - `StreamingReader.endDocument()` now verifies that the root value was consumed and no trailing input remains.
-- Improved generated `@CompiledMapper` mappings from `JsonObject` with direct scalar and nested-container access, including dynamic Map-backed children and primitive defaults for missing or null values.
+- Improved generated `@CompiledMapper` mappings from `JsonObject` with direct scalar and nested-container access.
+- Improved numeric conversion range errors and preserve overflowing floating-point literals as `BigDecimal` values.
 
 ### Fixed
+- Fixed simple JSON streaming reader and writer failures to consistently report `BindingException` errors.
+- Fixed generic type-argument resolution through parameterized intermediate superclasses.
 - Fixed URL value decoding to accept URI-compliant URLs before converting them to `URL` values.
 - Fixed Jackson 2 exclusive reads to close their parsers while leaving caller-provided readers and input streams open.
 - Fixed simple JSON parsing and JSON Schema `contentMediaType: application/json` validation to reject malformed delimiters, literals, numbers, escapes, surrogate pairs, trailing content, and invalid base64-decoded UTF-8.
 - Fixed Jackson 3 discriminator-based `OneOf` binding to preserve the parser cursor for following object properties.
+- Fixed streaming serialization to apply value codecs registered for a value's parent class or interface.
 
 
 

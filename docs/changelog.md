@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added compiled binding generation with `@ReadFrom` and `@WriteTo` annotations for custom property read/write methods.
 - Added `@CompiledBinder` format and backend selection with automatic JSON backend resolution.
+- Added `Format`, `BinderProvider`, and `BinderFactory` for ServiceLoader-discovered streaming binders. Jackson 3/2, Gson, Fastjson2, JSON-P, and SnakeYAML backends now publish providers with deterministic priority selection and explicit backend-configuration factories.
 
 ### Breaking Changes
 - Removed the generic `JsonException`; use the specialized `NodeException`, `BindingException`, `MappingException`, `PatchException`, and `PathException` types instead.
@@ -19,9 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved `ValueCodec`, `ValueInfo`, `ValueRegistry`, and `PatternedValueCodec` from `org.sjf4j.node` to `org.sjf4j.value`; update imports and public metadata references accordingly.
 - Renamed `ValueCodec` and `ValueCodecInfo` to `ValueCodec` and `ValueInfo`; update codec imports and public metadata references accordingly.
 - Renamed `ExternalNode.rootType()` to `nodeType()` and removed `ExternalNodeRegistry.init()`; external-node providers are now loaded during registry class initialization.
-- Converted `JsonBinder`, `YamlBinder`, `StreamingBinder`, and `StreamingWriter` from interfaces to abstract classes; custom backends must extend the new base classes and pass their binder/context through constructors.
 - Replaced `StreamingWriter.PropertyName` with `PreparedName`; custom backends must implement prepared-name writing with the new type.
-- Replaced manual `ExternalNodeRegistry.register(...)` registration with `ServiceLoader`-discovered `ExternalNodeProvider` implementations; external node integrations must publish a service provider.
+- Replaced manual `ExternalRegistry.register(...)` registration with `ServiceLoader`-discovered `ExternalProvider` implementations; external node integrations must publish a service provider.
 - Added `nextCharValue()` to `StreamingReader` and `writeCharValue(char)` to `StreamingWriter`; custom streaming backend implementations must implement these methods.
 - Renamed `org.sjf4j.binding.FieldReader` to `FieldReader`; update streaming binding references accordingly.
 - Renamed `org.sjf4j.node.PropertyInfo` to `FieldInfo`; update imports and public metadata references accordingly.
@@ -35,18 +35,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `CompiledNodes.instanceOf()` to `CompiledInstances.of()` and moved it from `org.sjf4j.compiled` to `org.sjf4j`.
 - Renamed `@CompiledPath` to `@CompiledNavigator`.
 - Renamed `@JdbcMapperOptions` to `@JdbcMappingOptions`.
-- Renamed JSON, YAML, node, properties, and streaming binding APIs from `*Binding` to `*Binder`, including the built-in simple implementations.
+- Renamed `StreamingBinder` to `Binder` and `BindingFactory` to `BinderFactory`. Removed `JsonBinder`, `YamlBinder`, `NodeBinder`, and `SimpleNodeBinder`; use `Binder` for streaming formats and `NodeMapper` for direct structural conversion. Custom providers and writers must update their `Binder` types and be recompiled, because the changed method descriptors are not binary compatible.
 - Moved `Nodes`, `NodeStream`, `NodeKind`, and `TypeReference` from `org.sjf4j.node` to `org.sjf4j`.
 - Moved runtime bytecode-path APIs (`BytecodePath`, `FallbackBytecodePath`, `PathCompiler`, and `BytecodeCompilers`) from `org.sjf4j.compiled` to `org.sjf4j.bytecode`, including the `PathCompiler` service-provider contract.
 - Renamed `org.sjf4j.util.StringBuilderWriter` to `org.sjf4j.binding.FastStringWriter`.
 - Removed the deprecated runtime mapper public APIs (`org.sjf4j.mapper.NodeMapper`, `NodeMapperBuilder`, and `Sjf4j.nodeMapperBuilder(...)`) from the published `sjf4j-core` artifact. Use annotation mapping with `@CompiledMapper` instead; the previous implementation remains incubator-only.
 - Renamed the Gson integration module and artifact from `sjf4j-integration-gson` to `sjf4j-backend-gson`, and moved its public classes to `org.sjf4j.backend.gson` packages.
+- Removed the built-in `Optional` codec. `Optional` is not a supported node or binding target.
+- Removed support for `Object.class` as a `ValueCodec` raw type; codecs must declare a fixed supported raw type.
 
 ### Added
 - Added the `@CompiledBinder` annotation marker.
 - Added the `sjf4j-backend-fastjson2` artifact with Fastjson2 streaming reader and writer bindings.
 - Added the `sjf4j-backend-jackson2` artifact with Jackson 2 streaming reader and writer bindings.
 - Added structural traversal and access operations to `ExternalNode` and built-in ServiceLoader discovery for Gson native nodes.
+- Added ServiceLoader-discovered mutable native-node adapters for Jackson 2 and Jackson 3, with traversal, conversion, access, and mutation support.
 - Added setup-time `ExternalNode` classifiers for integrating external JSON node models with `NodeKind` and `JsonType` detection.
 - Added the `sjf4j` aggregate artifact, which transitively includes `sjf4j-core` and `sjf4j-schema`.
 - Added JSON, YAML, and node binding interfaces plus a reusable `FastStringReader`.
@@ -65,7 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optimized streaming POJO serialization with backend-prepared field names and specialized scalar field writers.
 - Improved simple node binder conversion with creator-state handling, value-codec deep copies, read-only property skipping, and capacity-aware standard collection targets.
 - Optimized streaming POJO binding and writing with precomputed specialized field accessors.
-- Gson streaming binders now create configured writers and honor the `StreamingContext` null-serialization policy.
+- Gson streaming binders now create configured writers and honor the `RuntimeContext` null-serialization policy.
 - Renamed the internal Java 17 test and benchmark Gradle module from `sjf4j-jdk17-test` to `sjf4j-testbench`.
 - Optimized the built-in JSON reader with buffered input and allocation-conscious primitive number parsing.
 - Optimized JSON Pointer and JSONPath syntax parsing to reduce temporary allocations for common selectors, slices, and unions.
@@ -246,7 +249,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `Nodes.shape(...)` and `JsonContainer.shape()` to produce compact inspect-style structural summaries that keep supported container structure while rendering terminal values by simple runtime type name.
 - Added Jackson 3 facade-node mutation support for object put/remove, array set/append/insert/remove, and JSONPath writes against Jackson 3 native tree nodes.
 - Added `@NodeBinding(readDynamic = ... , writeDynamic = ...)` for JOJO types so unknown-field retention on read and dynamic-property emission on write can be controlled per type.
-- Added instance-scoped `StreamingContext`, facade providers, and new `Sjf4j.Builder` hooks so each runtime can build isolated JSON/YAML/properties/node facades with its own streaming mode.
+- Added instance-scoped `RuntimeContext`, facade providers, and new `Sjf4j.Builder` hooks so each runtime can build isolated JSON/YAML/properties/node facades with its own streaming mode.
 - Added `ValueFormatMapping`, named `ValueCodec` formats, `Sjf4j.Builder.defaultValueFormat(...)`, and `@NodeProperty(valueFormat = ...)` so value-codec selection can be configured per runtime, field, and creator parameter.
 - Added `Sjf4j.Builder.includeNulls(...)` so each runtime can choose whether JSON serialization keeps or omits `null` properties across Gson, Jackson 2, Jackson 3, and Fastjson2 facades.
 

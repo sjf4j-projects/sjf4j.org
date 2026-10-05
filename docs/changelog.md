@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `Format`, `BinderProvider`, and `BinderFactory` for ServiceLoader-discovered streaming binders. Jackson 3/2, Gson, Fastjson2, JSON-P, and SnakeYAML backends now publish providers with deterministic priority selection and explicit backend-configuration factories.
 
 ### Breaking Changes
+- Renamed `NodeKind.VALUE_CODEC` to `VALUE_BINDING` and `JsonType.isValue()` to `isScalar()`; value bindings may now represent scalar, object, or array JSON shapes.
 - Removed the generic `JsonException`; use the specialized `NodeException`, `BindingException`, `MappingException`, `PatchException`, and `PathException` types instead.
 - Moved Jackson 2 streaming binding classes from `org.sjf4j.backend.jackson3.binding` to `org.sjf4j.backend.jackson2.binding`; update imports accordingly.
 - Moved node binding annotations from `org.sjf4j.annotation.binding` to `org.sjf4j.annotation.node` and renamed `@NodeBinding` to `@NodeObject`.
@@ -41,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `org.sjf4j.util.StringBuilderWriter` to `org.sjf4j.binding.FastStringWriter`.
 - Removed the deprecated runtime mapper public APIs (`org.sjf4j.mapper.NodeMapper`, `NodeMapperBuilder`, and `Sjf4j.nodeMapperBuilder(...)`) from the published `sjf4j-core` artifact. Use annotation mapping with `@CompiledMapper` instead; the previous implementation remains incubator-only.
 - Renamed the Gson integration module and artifact from `sjf4j-integration-gson` to `sjf4j-backend-gson`, and moved its public classes to `org.sjf4j.backend.gson` packages.
-- Removed the built-in `Optional` codec. `Optional` is not a supported node or binding target.
+- Removed the built-in `Optional` codec; `Optional` may still be used through an explicitly registered `ValueCodec`.
 - Removed support for `Object.class` as a `ValueCodec` raw type; codecs must declare a fixed supported raw type.
 
 ### Added

@@ -13,7 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `@CompiledBinder` format and backend selection with automatic JSON backend resolution.
 - Added `Format`, `BinderProvider`, and `BinderFactory` for ServiceLoader-discovered streaming binders. Jackson 3/2, Gson, Fastjson2, JSON-P, and SnakeYAML backends now publish providers with deterministic priority selection and explicit backend-configuration factories.
 
+### Changed
+- Updated JSON-P streaming bindings and optimized structured property serialization; Jackson 2 benchmarks now include Blackbird comparisons.
+- Aligned streaming backends with the current reader/writer APIs, added primitive-array binding paths, and improved SnakeYAML JSON-compatible validation.
+
 ### Breaking Changes
+- Updated streaming reader/writer APIs and backend adapters; custom implementations must migrate to the current token, read, write, and direct-output methods.
 - Renamed `NodeKind.VALUE_CODEC` to `VALUE_BINDING` and `JsonType.isValue()` to `isScalar()`; value bindings may now represent scalar, object, or array JSON shapes.
 - Removed the generic `JsonException`; use the specialized `NodeException`, `BindingException`, `MappingException`, `PatchException`, and `PathException` types instead.
 - Moved Jackson 2 streaming binding classes from `org.sjf4j.backend.jackson3.binding` to `org.sjf4j.backend.jackson2.binding`; update imports accordingly.
@@ -21,11 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved `ValueCodec`, `ValueInfo`, `ValueRegistry`, and `PatternedValueCodec` from `org.sjf4j.node` to `org.sjf4j.value`; update imports and public metadata references accordingly.
 - Renamed `ValueCodec` and `ValueCodecInfo` to `ValueCodec` and `ValueInfo`; update codec imports and public metadata references accordingly.
 - Renamed `ExternalNode.rootType()` to `nodeType()` and removed `ExternalNodeRegistry.init()`; external-node providers are now loaded during registry class initialization.
-- Replaced `StreamingWriter.PropertyName` with `PreparedName`; custom backends must implement prepared-name writing with the new type.
+- Replaced `StreamingWriter.PropertyName` with `CompiledName`; custom backends must implement prepared-name writing with the new type.
 - Replaced manual `ExternalRegistry.register(...)` registration with `ServiceLoader`-discovered `ExternalProvider` implementations; external node integrations must publish a service provider.
 - Added `nextCharValue()` to `StreamingReader` and `writeCharValue(char)` to `StreamingWriter`; custom streaming backend implementations must implement these methods.
-- Renamed `org.sjf4j.binding.FieldReader` to `FieldReader`; update streaming binding references accordingly.
-- Renamed `org.sjf4j.node.PropertyInfo` to `FieldInfo`; update imports and public metadata references accordingly.
+- Renamed `org.sjf4j.binding.FieldReader` to `PropertyReader`; update streaming binding references accordingly.
+- Renamed `org.sjf4j.node.PropertyInfo` to `PropertyInfo`; update imports and public metadata references accordingly.
 - Renamed `org.sjf4j.node.ObjectInfo` to `PojoInfo`; update imports and public metadata references accordingly.
 - Renamed `JsonArray.elementType()` to `elementClass()`; update typed `JsonArray` subclasses accordingly.
 - Renamed the core Gradle module and published artifact from `sjf4j` to `sjf4j-core`; update project dependencies accordingly.
@@ -36,14 +41,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `CompiledNodes.instanceOf()` to `CompiledInstances.of()` and moved it from `org.sjf4j.compiled` to `org.sjf4j`.
 - Renamed `@CompiledPath` to `@CompiledNavigator`.
 - Renamed `@JdbcMapperOptions` to `@JdbcMappingOptions`.
-- Renamed `StreamingBinder` to `Binder` and `BindingFactory` to `BinderFactory`. Removed `JsonBinder`, `YamlBinder`, `NodeBinder`, and `SimpleNodeBinder`; use `Binder` for streaming formats and `NodeMapper` for direct structural conversion. Custom providers and writers must update their `Binder` types and be recompiled, because the changed method descriptors are not binary compatible.
+- Renamed `StreamingBinder` to `Binder` and `BindingFactory` to `BinderFactory`. Removed `JsonBinder`, `YamlBinder`, `NodeBinder`, and `SimpleNodeBinder`; use `Binder` for streaming formats and `ObjectMapper` for direct structural conversion. Custom providers and writers must update their `Binder` types and be recompiled, because the changed method descriptors are not binary compatible.
 - Moved `Nodes`, `NodeStream`, `NodeKind`, and `TypeReference` from `org.sjf4j.node` to `org.sjf4j`.
 - Moved runtime bytecode-path APIs (`BytecodePath`, `FallbackBytecodePath`, `PathCompiler`, and `BytecodeCompilers`) from `org.sjf4j.compiled` to `org.sjf4j.bytecode`, including the `PathCompiler` service-provider contract.
 - Renamed `org.sjf4j.util.StringBuilderWriter` to `org.sjf4j.binding.FastStringWriter`.
-- Removed the deprecated runtime mapper public APIs (`org.sjf4j.mapper.NodeMapper`, `NodeMapperBuilder`, and `Sjf4j.nodeMapperBuilder(...)`) from the published `sjf4j-core` artifact. Use annotation mapping with `@CompiledMapper` instead; the previous implementation remains incubator-only.
+- Removed the deprecated runtime mapper public APIs (`org.sjf4j.mapper.NodeMapper`, `ObjectMapperBuilder`, and `Sjf4j.nodeMapperBuilder(...)`) from the published `sjf4j-core` artifact. Use annotation mapping with `@CompiledMapper` instead; the previous implementation remains incubator-only.
 - Renamed the Gson integration module and artifact from `sjf4j-integration-gson` to `sjf4j-backend-gson`, and moved its public classes to `org.sjf4j.backend.gson` packages.
 - Removed the built-in `Optional` codec; `Optional` may still be used through an explicitly registered `ValueCodec`.
 - Removed support for `Object.class` as a `ValueCodec` raw type; codecs must declare a fixed supported raw type.
+- Removed the `org.sjf4j.facade` package and its backend-specific facade APIs; use the corresponding `Binder` implementations and backend integration packages instead.
 
 ### Added
 - Added the `@CompiledBinder` annotation marker.
@@ -290,7 +296,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improved
 - Improved `Nodes.to(...)`, `NodeFacade.readNode(...)`, and streaming IO binding so concrete `Map`/`List`/`Set` targets are created with their declared container implementations when supported.
 - Improved `Nodes.copy(...)` and `deepNode(...)` to preserve concrete container types when possible and fall back to default mutable containers only on unsupported source implementations.
-- Improved streaming `AnyOf` binding by caching container element/value `AnyOf` metadata on `FieldInfo` and avoiding redundant runtime `TypeInfo` lookups on hot read paths.
+- Improved streaming `AnyOf` binding by caching container element/value `AnyOf` metadata on `PropertyInfo` and avoiding redundant runtime `TypeInfo` lookups on hot read paths.
 - Improved Gson facade integration by routing plugin-module reads and writes through shared `StreamingIO`, removing the separate Gson-exclusive streaming path, and aligning `hasAny` write performance with native Gson baselines.
 - Improved plain-POJO fallback rules so default binding stays bean-oriented, `@NodeProperty` is the only field-level force-bind signal, and record component accessors continue to work under `BEAN_BASED`.
 - Improved shared/Jackson/Gson/Fastjson2 streaming readers by separating raw node reads from typed dispatch, reducing duplicated `Object.class` hot-path work and closing the Fastjson2 JOJO gap against native any-setter baselines.
@@ -303,7 +309,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed JSON Patch and RFC 7386 root-application APIs so `JsonPatch.apply(...)`, `PatchOperation.apply(...)`, `Patches.mergeRfc7386(...)`, and the `JsonContainer` wrappers return the possibly replaced root document.
 
 ### Removed
-- Breaking: removed `Sjf4j.toPojo(...)` and `Sjf4j.mapperBuilder(...)` from the `Sjf4j` entry point; use `fromNode(...)` and `NodeMapperBuilder` directly instead.
+- Breaking: removed `Sjf4j.toPojo(...)` and `Sjf4j.mapperBuilder(...)` from the `Sjf4j` entry point; use `fromNode(...)` and `ObjectMapperBuilder` directly instead.
 
 ### Fixed
 - Fixed binding consistency for concrete container fields and root targets across shared and exclusive streaming backends.
@@ -320,7 +326,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.6] - 2026.04.02
 ### Added
 - Added `JsonPath.compute(...)` overloads to update every matched target from its current content.
-- Added `NodeConverter`, `NodeMapper`, and `NodeMapperBuilder` for path-driven object graph mapping.
+- Added `NodeConverter`, `ObjectMapper`, and `ObjectMapperBuilder` for path-driven object graph mapping.
 - Added `NamingStrategy` and `@NodeNaming` to map JSON property names like `snake_case` to Java fields without per-field annotations.
 
 ### Improved

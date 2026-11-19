@@ -29,32 +29,27 @@ bringing data binding, navigation, validation, mapping, and patching together.
   Enjoy flexible runtime APIs and highly optimized compile-time code generation.
 
 
-## Installation
+## Quickstart
 
-SJF4J requires **Java 8+** and supports modular installation. 
-The latest version: 
-[![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j)
+SJF4J supports **Java 8+**. Add the modules you need (Gradle):
 
-Gradle: 
-```java
-// Core structural processing API
-implementation("org.sjf4j:sjf4j-core:{version}")
+```kotlin
+dependencies {
+    implementation("org.sjf4j:sjf4j-core:{version}")
 
-// Optional: Compile-time APIs
-annotationProcessor("org.sjf4j:sjf4j-processor:{version}")
+    // Optional: Jackson 2.x backend (includes Jackson dependencies)
+    implementation("org.sjf4j:sjf4j-backend-jackson2:{version}")
 
-// Optional: JSON Schema validation
-implementation("org.sjf4j:sjf4j-schema:{version}")
+    // Optional: Compiled APIs
+    annotationProcessor("org.sjf4j:sjf4j-processor:{version}")
 
-// Optional: Backend and its dependency (Jackson 2.x example) 
-implementation("org.sjf4j:sjf4j-backend-jackson2:{version}")
-implementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
+    // Optional: JSON Schema validation
+    implementation("org.sjf4j:sjf4j-schema:{version}")
+}
 ```
 
-Learn more → [Installation (Modular)](https://sjf4j.org/docs/installation)
-
-
-## Quickstart
+Replace `{version}` with the latest [Maven Central release](https://central.sonatype.com/artifact/org.sjf4j/sjf4j).
+For Maven and other modules, see the [Installation](https://sjf4j.org/docs/installation).
 
 **Start with an ordinary Java class:**
 ```java
@@ -129,7 +124,7 @@ SJF4J's open streaming architecture supports custom data formats and backends.
 Its rich binding capabilities include `@OneOf` polymorphism, multi-format `ValueCodec` support,
 and fully managed `ExternalNode` integration.
 
-Learn more → [Binding (Formats)](https://sjf4j.org/docs/binding)
+Learn more → [Binding](https://sjf4j.org/docs/binding)
 
 
 ### Navigating
@@ -159,7 +154,7 @@ interface UserNavigator {
 
 SJF4J combines standards-compliant JSONPath querying with powerful structural navigation and mutation, operating directly on Java objects without intermediate JSON trees.
 
-Learn more → [Navigating (JSONPath)](https://sjf4j.org/docs/navigating)
+Learn more → [Navigating](https://sjf4j.org/docs/navigating)
 
 
 ### Validating
@@ -199,7 +194,7 @@ including full validation and annotation collection.
 *Experimental: JSON Schema can also be used to generate Java models
 through the online [Schema-to-Java Generator](https://sjf4j.org/generator).*
 
-Learn more → [Validating (JSON Schema)](https://sjf4j.org/docs/validating)
+Learn more → [Validating](https://sjf4j.org/docs/validating)
 
 
 ### Mapping
@@ -228,7 +223,7 @@ interface UserMapper {
 }
 ```
 
-Learn more → [Mapping (Object-to-object)](https://sjf4j.org/docs/mapping)
+Learn more → [Object Mapping](https://sjf4j.org/docs/mapping)
 
 `@CompiledJdbcMapper` generates direct mappings from JDBC `ResultSet` to Java objects:
 ```java
@@ -253,7 +248,7 @@ JsonPatch patch = JsonPatch.fromJson("""
 patch.apply(user);  // Update in place
 ```
 
-Learn more → [Patching (JSON Patch)](https://sjf4j.org/docs/patching)
+Learn more → [Patching](https://sjf4j.org/docs/patching)
 
 
 ### Modeling
@@ -285,7 +280,7 @@ if (!Nodes.equals(user, userMap)) {
 }
 ```
 
-OBNT also supports extensible object models:
+OBNT supports extensible object models:
 
 - Extend `JsonObject` to create a **JOJO (JSON Object Java Object)**, combining typed properties with dynamic members in a hybrid object model.
 - Extend `JsonArray` to create a **JAJO (JSON Array Java Object)**, a typed, extensible array node.
@@ -298,11 +293,8 @@ Learn more → [Modeling (OBNT)](https://sjf4j.org/docs/modeling)
 
 ## Enjoy Compiled APIs
 
-SJF4J's Compiled APIs can deliver **up to 50× faster execution** than Runtime through compile-time code generation.
+SJF4J generates optimized Java implementations from annotated interfaces at compile time:
 
-### How It Works
-
-Define an annotated interface:
 ```java
 @CompiledNavigator
 interface UserNavigator {
@@ -311,90 +303,46 @@ interface UserNavigator {
 }
 ```
 
-The annotation processor generates an implementation such as `UserNavigator_Impl`:
-```java
-// Simplified illustration of generated code
-public final class UserNavigator_Impl implements UserNavigator {
+Use the generated implementation directly:
 
-    @Override
-    public String getCity(User user) {
-        if (user == null) return null;
-        Address address = user.address;
-        return address == null ? null : address.city;
-    }
-}
-```
-
-This implementation is automatically generated at compile-time, producing readable, debuggable Java source code that the JVM can optimize just like hand-written code.
-
-
-### Where's the Code
-
-Generated implementations use the `_Impl` suffix and are written to the standard annotation-processing output directory.
-
-For Gradle:
-```text
-build/
-└── generated/
-    └── sources/
-        └── annotationProcessor/
-            └── java/
-                └── main/
-                    └── com/example/
-                        └── UserNavigator_Impl.java
-```
-
-For Maven, typically: `target/generated-sources/annotations/com/example/UserNavigator_Impl.java`
-
-### How to Use
-
-Add the annotation processor to your project:
-```java
-annotationProcessor("org.sjf4j:sjf4j-processor:{version}")
-```
-
-Use `CompiledInstances.create()` to instantiate generated implementations:
 ```java
 UserNavigator navigator = CompiledInstances.create(UserNavigator.class);
+String city = navigator.getCity(user);
 ```
 
-More commonly, declare a static `INSTANCE` field directly in the interface:
-```java
-@CompiledNavigator
-interface UserNavigator {
-    UserNavigator INSTANCE = CompiledInstances.create(UserNavigator.class);
+Or inject it as a Spring Bean:
 
-    @GetByPath("$.address.city")
-    String getCity(User user);
+```java
+@Service
+class UserService {
+    @Autowired
+    private UserNavigator navigator;
 }
 ```
 
-Then use it:
-```java
-String city = UserNavigator.INSTANCE.getCity(user);
-```
+See [Compiled APIs](https://sjf4j.org/docs/compiled) for generation details and [Spring Integration](https://sjf4j.org/docs/spring-integration) for Spring setup.
 
 ## Benchmarks
 
 SJF4J's performance and standards compliance are evaluated through independent comparisons and [JMH](https://github.com/openjdk/jmh) benchmarks.
 
 **JSON Binding**
-- [🔗 Java JSON Benchmark](https://github.com/fabienrenaud/java-json-benchmark) — Independent JSON library benchmarks.
 - [Binding Full Benchmarks](https://github.com/sjf4j-projects/sjf4j/blob/main/docs/performance/binding.md) — Native JSON backends vs. Runtime and Compiled.
 - [Binding Native Image Full Benchmarks](https://github.com/sjf4j-projects/sjf4j/blob/main/docs/performance/binding-native.md) — GraalVM AOT, direct library Binding vs. Runtime and Compiled.
+- [🔗 Java JSON Benchmark](https://github.com/fabienrenaud/java-json-benchmark) — Independent JSON library benchmarks.
 
 **JSONPath Navigation**
-- [🔗 JSONPath Comparison](https://cburgmer.github.io/json-path-comparison/) — Cross-implementation specification compatibility.
 - [JSONPath Full Benchmarks](https://github.com/sjf4j-projects/sjf4j/blob/main/docs/performance/path.md) — Jayway JsonPath vs. Runtime and Compiled.
+- [🔗 JSONPath Comparison](https://cburgmer.github.io/json-path-comparison/) — Cross-implementation specification compatibility.
 
 **JSON Schema Validation**
+- [JSON Schema Full Benchmarks](https://github.com/sjf4j-projects/sjf4j/blob/main/docs/performance/schema.md) — NetworkNT vs. Runtime and Compiled, including roundtrip performance.
 - [🔗 Creek Service](https://www.creekservice.org/json-schema-validation-comparison/) — Independent JVM validation benchmarks.
 - [🔗 Bowtie](https://bowtie.report/) — Cross-language JSON Schema compliance.
-- [JSON Schema Full Benchmarks](https://github.com/sjf4j-projects/sjf4j/blob/main/docs/performance/schema.md) — NetworkNT vs. Runtime and Compiled, including roundtrip performance.
 
 **Object Mapping**
-- [🔗 Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark) — Independent comparison with Java mapping frameworks.
 - [Object Mapping Full Benchmarks](https://github.com/sjf4j-projects/sjf4j/blob/main/docs/performance/mapping.md) — MapStruct vs. CompiledMapper.
+- [🔗 Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark) — Independent comparison with Java mapping frameworks.
 
 **JDBC Result Mapping**
 - [JDBC Mapping Full Benchmarks](https://github.com/sjf4j-projects/sjf4j/blob/main/docs/performance/jdbc-mapping.md) — Spring JDBC and MyBatis vs. CompiledJdbcMapper.
